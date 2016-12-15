@@ -1,0 +1,74 @@
+#!/usr/bin/env python
+
+from __future__ import absolute_import, division, print_function, unicode_literals
+
+import os, sys, argparse, inspect, json, uuid
+
+from chalice.cli import create_botocore_session, load_project_config, load_chalice_app as load_app
+from chalice.deployer import LambdaDeploymentPackager, LambdaDeployer, OSUtils, NoPrompt
+from chalice.awsclient import TypedAWSClient
+from chalice.config import Config
+import boto3.session
+
+import domovoi
+
+try:
+    import pkg_resources
+    __version__ = pkg_resources.get_distribution(__name__).version
+except Exception:
+    __version__ = "0.0.0"
+
+class DomovoiDeploymentPackager(LambdaDeploymentPackager):
+    _CHALICE_LIB_DIR = "domovoilib"
+    def _add_app_files(self, zip, project_dir):
+        domovoi_router = inspect.getfile(domovoi.app)
+        if domovoi_router.endswith('.pyc'):
+            domovoi_router = domovoi_router[:-1]
+        zip.write(domovoi_router, 'domovoi/app.py')
+
+        domovoi_init = inspect.getfile(domovoi)
+        if domovoi_init.endswith('.pyc'):
+            domovoi_init = domovoi_init[:-1]
+        zip.write(domovoi_init, 'domovoi/__init__.py')
+
+        zip.write(os.path.join(project_dir, 'app.py'), 'app.py')
+        self._add_chalice_lib_if_needed(project_dir, zip)
+
+parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+parser.add_argument("--profile")
+parser.add_argument("--debug", action="store_true")
+parser.add_argument("action", choices={"deploy"})
+parser.add_argument("project_dir", nargs="?", default=os.getcwd())
+args = parser.parse_args()
+args.domovoi_app = load_app(args.project_dir)
+
+session = create_botocore_session(profile=args.profile, debug=args.debug)
+session.user_agent_extra = "domovoi/%s" % __version__
+events = boto3.session.Session(botocore_session=session).client("events")
+sns = boto3.session.Session(botocore_session=session).resource("sns")
+awslambda = boto3.session.Session(botocore_session=session).client("lambda")
+
+deployer = LambdaDeployer(aws_client=TypedAWSClient(session),
+                          packager=DomovoiDeploymentPackager(),
+                          prompter=NoPrompt(),
+                          osutils=OSUtils())
+config = Config(vars(args), load_project_config(args.project_dir))
+deployer.deploy(config)
+
+for task_name, task in args.domovoi_app.scheduled_tasks.items():
+    print("Scheduling", task_name, "to run at", task["schedule"])
+    rule_arn = events.put_rule(Name=task_name, ScheduleExpression=task["schedule"])["RuleArn"]
+    events.put_targets(Rule=task_name, Targets=[dict(Id=task_name, Arn=config.lambda_arn, Input=json.dumps(dict(scheduled_task=task_name)))])
+    print("Scheduled CloudWatch event", rule_arn)
+
+for sns_topic, event_handler in args.domovoi_app.sns_subscribers.items():
+    print("Subscribing", event_handler, "to", sns_topic)
+    topic = sns.create_topic(Name=sns_topic)
+    subscription = topic.subscribe(Protocol="lambda", Endpoint=config.lambda_arn)
+    print("Subscribed to", subscription)
+
+for service in ('apigateway.amazonaws.com', 'events.amazonaws.com', 'sns.amazonaws.com'):
+    awslambda.add_permission(FunctionName=config.app_name,
+                             StatementId=str(uuid.uuid4()),
+                             Principal=service,
+                             Action='lambda:InvokeFunction')

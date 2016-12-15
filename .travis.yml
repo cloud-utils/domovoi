@@ -1,0 +1,14 @@
+language: python
+cache: pip
+
+python:
+  - 2.7
+  - 3.5
+
+script:
+  - make test
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
+
+sudo: false
