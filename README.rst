@@ -45,8 +45,9 @@ Replace the Chalice app entry point with the Domovoi app entry point as above, t
     domovoi deploy
 
 To stage files into the deployment package, use a ``domovoilib`` directory in your project where you would use
-``chalicelib`` in Chalice. See the `Chalice docs <http://chalice.readthedocs.io/>`_ for more information on how to set
-up Chalice configuration.
+``chalicelib`` in Chalice. For example, ``my_project/domovoilib/rds_cert.pem`` becomes ``/var/task/domovoilib/rds_cert.pem``
+with your function executing in ``/var/task/app.py`` with ``/var/task`` as the working directory. See the
+`Chalice docs <http://chalice.readthedocs.io/>`_ for more information on how to set up Chalice configuration.
 
 Links
 -----
