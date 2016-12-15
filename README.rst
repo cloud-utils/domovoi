@@ -4,7 +4,9 @@ Domovoi: AWS Lambda event handler manager
 *Domovoi* is an extension to `AWS Labs Chalice <https://github.com/awslabs/chalice>`_ to handle `AWS Lambda
 <https://aws.amazon.com/lambda/>`_ `event sources
 <http://docs.aws.amazon.com/lambda/latest/dg/invoking-lambda-function.html#intro-core-components-event-sources>`_ other
-than HTTP requests through API Gateway. Domovoi lets you easily configure and deploy a Lambda function to run on a schedule or in response to an event source like an SNS event::
+than HTTP requests through API Gateway. Domovoi lets you easily configure and deploy a Lambda function to run on a schedule or in response to an event source like an SNS event:
+
+.. code-block:: python
 
     import json, boto3, domovoi
 
