@@ -45,4 +45,6 @@ class Domovoi(object):
             handler = self.sns_subscribers[sns_topic]
         else:
             raise Exception("No handler found for event {}".format(event))
-        return handler(event, context)
+        result = handler(event, context)
+        context.log(result)
+        return result
