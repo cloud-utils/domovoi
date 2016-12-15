@@ -44,7 +44,9 @@ Replace the Chalice app entry point with the Domovoi app entry point as above, t
 
     domovoi deploy
 
-See the `Chalice docs <http://chalice.readthedocs.io/>`_ for information on how to set up Chalice configuration.
+To stage files into the deployment package, use a ``domovoilib`` directory in your project where you would use
+``chalicelib`` in Chalice. See the `Chalice docs <http://chalice.readthedocs.io/>`_ for more information on how to set
+up Chalice configuration.
 
 Links
 -----
