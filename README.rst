@@ -25,7 +25,8 @@ than HTTP requests through API Gateway. Domovoi lets you easily configure and de
 
     @app.sns_topic_subscriber("bartender")
     def tend(event, context):
-        context.log(dict(beer="Quadrupel"))
+        message = json.loads(event["Records"][0]["Sns"]["Message"])
+        context.log(dict(beer="Quadrupel", quantity=message["beer"]))
 
 Installation
 ------------
