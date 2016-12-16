@@ -5,6 +5,12 @@ python:
   - 2.7
   - 3.5
 
+before_install:
+  - pip install --quiet coverage flake8 pyyaml
+
+install:
+  - make install
+
 script:
   - make test
 
