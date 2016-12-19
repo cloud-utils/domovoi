@@ -52,7 +52,14 @@ deployer = LambdaDeployer(aws_client=TypedAWSClient(session),
                           packager=DomovoiDeploymentPackager(),
                           prompter=NoPrompt(),
                           osutils=OSUtils())
+
 config = Config(vars(args), load_project_config(args.project_dir))
+
+if not deployer._load_last_policy(config):
+    default_iam_policy_filename = os.path.join(os.path.dirname(domovoi.__file__), "default_iam_policy.json")
+    with open(default_iam_policy_filename) as fh:
+        deployer._record_policy(config, json.load(fh))
+
 deployer.deploy(config)
 
 for task_name, task in args.domovoi_app.scheduled_tasks.items():

@@ -23,7 +23,7 @@ setup(
     packages=find_packages(exclude=['test']),
     scripts=glob.glob('scripts/*'),
     platforms=['MacOS X', 'Posix'],
-    package_data={'domovoi': ['schemas/*.xsd']},
+    package_data={'domovoi': ['*.json']},
     zip_safe=False,
     include_package_data=True,
     test_suite='test',
