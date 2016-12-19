@@ -13,7 +13,9 @@ docs:
 	$(MAKE) -C docs html
 
 install:
-	./setup.py install
+	-rm -rf dist
+	python setup.py bdist_wheel
+	pip install --upgrade dist/*.whl
 
 .PHONY: test release docs
 
