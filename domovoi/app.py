@@ -4,26 +4,18 @@ class ARN:
         self.__dict__.update(dict(zip(self.fields, arn.split(":", 5)), **kwargs))
 
 class Domovoi(object):
-    scheduled_tasks = {}
+    cloudwatch_events_rules = {}
     sns_subscribers = {}
+    s3_subscribers = {}
 
     def scheduled_function(self, schedule):
-        def register_scheduled_task(func):
-            if func.__name__ in self.scheduled_tasks:
-                raise KeyError(func.__name__)
-            self.scheduled_tasks[func.__name__] = dict(schedule=schedule, func=func)
-            return func
-        return register_scheduled_task
+        return self.cloudwatch_rule(schedule_expression=schedule, event_pattern=None)
 
     def sns_topic_subscriber(self, topic_name):
-        def register_scheduled_task(func):
+        def register_sns_subscriber(func):
             self.sns_subscribers[topic_name] = func
             return func
-        return register_scheduled_task
-
-    def s3_event_handler(self, bucket, event_type):
-        # http://boto3.readthedocs.io/en/latest/reference/services/s3.html#S3.Client.put_bucket_notification_configuration
-        raise NotImplementedError()
+        return register_sns_subscriber
 
     def dynamodb_event_handler(self):
         raise NotImplementedError()
@@ -36,10 +28,29 @@ class Domovoi(object):
         # http://boto3.readthedocs.io/en/latest/reference/services/logs.html#CloudWatchLogs.Client.put_subscription_filter
         raise NotImplementedError()
 
+    def cloudwatch_event_handler(self, **kwargs):
+        return self.cloudwatch_rule(schedule_expression=None, event_pattern=kwargs)
+
+    def s3_event_handler(self, bucket, events, prefix=None, suffix=None):
+        def register_s3_subscriber(func):
+            self.s3_subscribers[bucket] = dict(events=events, prefix=prefix, suffix=suffix, func=func)
+            return func
+        return register_s3_subscriber
+
+    def cloudwatch_rule(self, schedule_expression, event_pattern):
+        def register_rule(func):
+            if func.__name__ in self.cloudwatch_events_rules:
+                raise KeyError(func.__name__)
+            rule = dict(schedule_expression=schedule_expression, event_pattern=event_pattern, func=func)
+            self.cloudwatch_events_rules[func.__name__] = rule
+            return func
+        return register_rule
+
     def __call__(self, event, context):
         context.log("Domovoi dispatch of event {}".format(event))
-        if "scheduled_task" in event:
-            handler = self.scheduled_tasks[event["scheduled_task"]]["func"]
+        if "task_name" in event:
+            handler = self.cloudwatch_events_rules[event["task_name"]]["func"]
+            event = event["event"]
         elif "Records" in event:
             sns_topic = ARN(event["Records"][0]["Sns"]["TopicArn"]).resource
             handler = self.sns_subscribers[sns_topic]

@@ -29,6 +29,16 @@ schedule or in response to an `SNS <https://aws.amazon.com/sns/>`_ push notifica
         message = json.loads(event["Records"][0]["Sns"]["Message"])
         context.log(dict(beer="Quadrupel", quantity=message["beer"]))
 
+    @app.cloudwatch_event_handler(source=["aws.ecs"])
+    def monitor_ecs_events(event, context):
+        message = json.loads(event["Records"][0]["Sns"]["Message"])
+        context.log("Got an event from ECS: {}".format(message))
+
+    @app.s3_event_handler(bucket="myS3bucket", events=["s3:ObjectCreated:*"], prefix="foo", suffix=".bar")
+    def monitor_s3(event, context):
+        message = json.loads(event["Records"][0]["Sns"]["Message"])
+        context.log("Got an event from S3: {}".format(message))
+
 Installation
 ------------
 ::
@@ -49,6 +59,21 @@ To stage files into the deployment package, use a ``domovoilib`` directory in yo
 ``chalicelib`` in Chalice. For example, ``my_project/domovoilib/rds_cert.pem`` becomes ``/var/task/domovoilib/rds_cert.pem``
 with your function executing in ``/var/task/app.py`` with ``/var/task`` as the working directory. See the
 `Chalice docs <http://chalice.readthedocs.io/>`_ for more information on how to set up Chalice configuration.
+
+Supported event types
+---------------------
+See http://docs.aws.amazon.com/lambda/latest/dg/invoking-lambda-function.html for an overview of event sources that
+can be used to trigger Lambda functions. Domovoi supports the following event sources:
+
+* SNS subscriptions
+* CloudWatch Events rule targets, including CloudWatch Scheduled Events (see http://docs.aws.amazon.com/AmazonCloudWatch/latest/events/EventTypes.html for a list of event types supported by CloudWatch Events)
+
+TODO:
+
+* CloudWatch Logs filter subscriptions
+* S3 events
+* DynamoDB events
+* SES (email) events
 
 Links
 -----
