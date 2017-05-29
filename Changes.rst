@@ -1,3 +1,8 @@
+Changes for v1.0.0 (2017-05-28)
+===============================
+
+-  Update to be compatible with Chalice 0.8 and Python 3.6
+
 
 
 
