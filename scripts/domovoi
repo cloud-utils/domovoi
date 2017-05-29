@@ -4,10 +4,11 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import os, sys, argparse, inspect, json, uuid
 
-from chalice.cli import create_botocore_session, load_project_config, load_chalice_app as load_app
-from chalice.deployer import LambdaDeploymentPackager, LambdaDeployer, OSUtils, NoPrompt, ApplicationPolicyHandler
-from chalice.awsclient import TypedAWSClient
+from chalice.cli.factory import create_botocore_session, CLIFactory
+from chalice.deploy.packager import LambdaDeploymentPackager
+from chalice.deploy.deployer import APIGatewayDeployer
 from chalice.config import Config
+from chalice.utils import record_deployed_values
 import boto3.session
 
 import domovoi
@@ -34,37 +35,46 @@ class DomovoiDeploymentPackager(LambdaDeploymentPackager):
         zip.write(os.path.join(project_dir, 'app.py'), 'app.py')
         self._add_chalice_lib_if_needed(project_dir, zip)
 
+class NoOpDeployer(APIGatewayDeployer):
+    def deploy(self, *args, **kwargs):
+        return None, self._aws_client.region_name, None
+
+    def delete(self, *args, **kwargs):
+        pass
+
+
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument("--profile")
 parser.add_argument("--debug", action="store_true")
 parser.add_argument("action", choices={"deploy"})
 parser.add_argument("project_dir", nargs="?", default=os.getcwd())
 args = parser.parse_args()
-args.domovoi_app = load_app(args.project_dir)
 
-session = create_botocore_session(profile=args.profile, debug=args.debug)
-session.user_agent_extra = "domovoi/%s" % __version__
-events = boto3.session.Session(botocore_session=session).client("events")
-sns = boto3.session.Session(botocore_session=session).resource("sns")
-awslambda = boto3.session.Session(botocore_session=session).client("lambda")
+botocore_session = create_botocore_session(profile=args.profile, debug=args.debug)
+botocore_session.user_agent_extra = "domovoi/%s" % __version__
+boto3_session = boto3.session.Session(botocore_session=botocore_session)
+events = boto3_session.client("events")
+sns = boto3_session.resource("sns")
+awslambda = boto3_session.client("lambda")
+s3 = boto3_session.resource("s3")
 
-osutils = OSUtils()
-deployer = LambdaDeployer(aws_client=TypedAWSClient(session),
-                          packager=DomovoiDeploymentPackager(),
-                          prompter=NoPrompt(),
-                          osutils=osutils,
-                          app_policy=ApplicationPolicyHandler(osutils))
+factory = CLIFactory(args.project_dir)
+config = factory.create_config_obj()
+deployer = factory.create_default_deployer(session=botocore_session, prompter=None)
+deployer._lambda_deploy._packager = DomovoiDeploymentPackager()
+deployer._apigateway_deploy = NoOpDeployer(deployer._apigateway_deploy._aws_client)
 
-config = Config(vars(args), load_project_config(args.project_dir))
-
-if not deployer._app_policy.load_last_policy(config)["Statement"]:
+if not deployer._lambda_deploy._app_policy.load_last_policy(config)["Statement"]:
     default_iam_policy_filename = os.path.join(os.path.dirname(domovoi.__file__), "default_iam_policy.json")
     with open(default_iam_policy_filename) as fh:
-        deployer._app_policy.record_policy(config, json.load(fh))
+        deployer._lambda_deploy._app_policy.record_policy(config, json.load(fh))
 
-deployer.deploy(config)
+deployed_values = deployer.deploy(config)
+record_deployed_values(deployed_values, os.path.join(config.project_dir, '.chalice', 'deployed.json'))
+domovoi_app = config.chalice_app
+lambda_arn = config.deployed_resources(config.chalice_stage).api_handler_arn
 
-for task_name, task in args.domovoi_app.cloudwatch_events_rules.items():
+for task_name, task in domovoi_app.cloudwatch_events_rules.items():
     print("Scheduling", task_name, "to run on schedule ", task["schedule_expression"], "pattern", task["event_pattern"])
     rule_args = dict(Name=task_name)
     if task.get("schedule_expression"):
@@ -74,19 +84,18 @@ for task_name, task in args.domovoi_app.cloudwatch_events_rules.items():
     rule_arn = events.put_rule(**rule_args)["RuleArn"]
     lambda_input = '{"task_name": "%s", "event": <event>}' % task_name
     ixform = dict(InputPathsMap=dict(event="$"), InputTemplate=lambda_input)
-    events.put_targets(Rule=task_name, Targets=[dict(Id=task_name, Arn=config.lambda_arn, InputTransformer=ixform)])
+    events.put_targets(Rule=task_name, Targets=[dict(Id=task_name, Arn=lambda_arn, InputTransformer=ixform)])
     print("Scheduled CloudWatch event", rule_arn)
 
-for sns_topic, event_handler in args.domovoi_app.sns_subscribers.items():
+for sns_topic, event_handler in domovoi_app.sns_subscribers.items():
     print("Subscribing", event_handler, "to", sns_topic)
     topic = sns.create_topic(Name=sns_topic)
-    subscription = topic.subscribe(Protocol="lambda", Endpoint=config.lambda_arn)
+    subscription = topic.subscribe(Protocol="lambda", Endpoint=lambda_arn)
     print("Subscribed to", subscription)
 
-for s3_bucket, event_handler in args.domovoi_app.s3_subscribers.items():
+for s3_bucket, event_handler in domovoi_app.s3_subscribers.items():
     print("Subscribing", event_handler, "to events in S3 bucket", s3_bucket)
-    s3 = boto3.session.Session(botocore_session=session).resource("s3")
-    cfg = dict(LambdaFunctionArn=config.lambda_arn, Events=event_handler["events"],
+    cfg = dict(LambdaFunctionArn=lambda_arn, Events=event_handler["events"],
                Filter=dict(Key=dict(FilterRules=[])))
     for fltr in "prefix", "suffix":
         if event_handler.get(fltr):

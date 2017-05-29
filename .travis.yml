@@ -3,11 +3,7 @@ cache: pip
 
 python:
   - 2.7
-  - 3.5
-
-matrix:
-  allow_failures:
-    - python: 3.5
+  - 3.6
 
 before_install:
   - pip install --quiet coverage flake8 pyyaml

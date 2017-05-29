@@ -13,12 +13,11 @@ setup(
     description='AWS Lambda event handler manager',
     long_description=open('README.rst').read(),
     install_requires=[
-        'boto3 >= 1.4.2',
-        'chalice >= 0.6.0'
+        'boto3 >= 1.4.4, < 2',
+        'chalice >= 0.8.2, < 1'
     ],
     extras_require={
-        ':python_version == "2.7"': ['enum34 >= 1.0.4'],
-        ':python_version == "3.3"': ['enum34 >= 1.0.4']
+        ':python_version == "2.7"': ['enum34 >= 1.1.6, < 2']
     },
     packages=find_packages(exclude=['test']),
     scripts=glob.glob('scripts/*'),

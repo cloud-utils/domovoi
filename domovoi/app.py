@@ -1,9 +1,13 @@
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 class ARN:
     fields = "arn partition service region account_id resource".split()
     def __init__(self, arn="arn:aws::::", **kwargs):
         self.__dict__.update(dict(zip(self.fields, arn.split(":", 5)), **kwargs))
 
 class Domovoi(object):
+    app_name = "Domovoi"
+    routes = {}
     cloudwatch_events_rules = {}
     sns_subscribers = {}
     s3_subscribers = {}
