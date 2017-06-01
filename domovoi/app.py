@@ -1,16 +1,18 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+from chalice.app import Chalice
+
 class ARN:
     fields = "arn partition service region account_id resource".split()
     def __init__(self, arn="arn:aws::::", **kwargs):
         self.__dict__.update(dict(zip(self.fields, arn.split(":", 5)), **kwargs))
 
-class Domovoi(object):
-    app_name = "Domovoi"
-    routes = {}
+class Domovoi(Chalice):
     cloudwatch_events_rules = {}
     sns_subscribers = {}
     s3_subscribers = {}
+    def __init__(self, app_name="Domovoi"):
+        Chalice.__init__(self, app_name=app_name, configure_logs=False)
 
     def scheduled_function(self, schedule):
         return self.cloudwatch_rule(schedule_expression=schedule, event_pattern=None)

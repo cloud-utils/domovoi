@@ -57,6 +57,7 @@ events = boto3_session.client("events")
 sns = boto3_session.resource("sns")
 awslambda = boto3_session.client("lambda")
 s3 = boto3_session.resource("s3")
+sts = boto3_session.client("sts")
 
 factory = CLIFactory(args.project_dir)
 config = factory.create_config_obj()
@@ -73,6 +74,12 @@ deployed_values = deployer.deploy(config)
 record_deployed_values(deployed_values, os.path.join(config.project_dir, '.chalice', 'deployed.json'))
 domovoi_app = config.chalice_app
 lambda_arn = config.deployed_resources(config.chalice_stage).api_handler_arn
+
+for service in ('apigateway.amazonaws.com', 'events.amazonaws.com', 'sns.amazonaws.com'):
+    awslambda.add_permission(FunctionName=lambda_arn,
+                             StatementId=str(uuid.uuid4()),
+                             Principal=service,
+                             Action='lambda:InvokeFunction')
 
 for task_name, task in domovoi_app.cloudwatch_events_rules.items():
     print("Scheduling", task_name, "to run on schedule ", task["schedule_expression"], "pattern", task["event_pattern"])
@@ -101,9 +108,3 @@ for s3_bucket, event_handler in domovoi_app.s3_subscribers.items():
         if event_handler.get(fltr):
             cfg["Filter"]["Key"]["FilterRules"].append(dict(Name=fltr, Value=event_handler[fltr]))
     s3.Bucket(s3_bucket).Notification().put(NotificationConfiguration=dict(LambdaFunctionConfigurations=[cfg]))
-
-for service in ('apigateway.amazonaws.com', 'events.amazonaws.com', 'sns.amazonaws.com'):
-    awslambda.add_permission(FunctionName=config.app_name,
-                             StatementId=str(uuid.uuid4()),
-                             Principal=service,
-                             Action='lambda:InvokeFunction')
