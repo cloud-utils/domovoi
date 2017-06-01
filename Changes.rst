@@ -1,3 +1,10 @@
+Changes for v1.0.2 (2017-06-01)
+===============================
+
+-  Fix dispatching of S3 events
+
+-  Fixes to deploy procedure
+
 Changes for v1.0.1 (2017-06-01)
 ===============================
 
