@@ -4,6 +4,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import os, sys, argparse, inspect, json, uuid
 
+import chalice, chalice.app
 from chalice.cli.factory import create_botocore_session, CLIFactory
 from chalice.deploy.packager import LambdaDeploymentPackager
 from chalice.deploy.deployer import APIGatewayDeployer
@@ -23,16 +24,26 @@ class DomovoiDeploymentPackager(LambdaDeploymentPackager):
     _CHALICE_LIB_DIR = "domovoilib"
     def _add_app_files(self, zip, project_dir):
         domovoi_router = inspect.getfile(domovoi.app)
-        if domovoi_router.endswith('.pyc'):
+        if domovoi_router.endswith(".pyc"):
             domovoi_router = domovoi_router[:-1]
-        zip.write(domovoi_router, 'domovoi/app.py')
+        zip.write(domovoi_router, "domovoi/app.py")
 
         domovoi_init = inspect.getfile(domovoi)
-        if domovoi_init.endswith('.pyc'):
+        if domovoi_init.endswith(".pyc"):
             domovoi_init = domovoi_init[:-1]
-        zip.write(domovoi_init, 'domovoi/__init__.py')
+        zip.write(domovoi_init, "domovoi/__init__.py")
 
-        zip.write(os.path.join(project_dir, 'app.py'), 'app.py')
+        chalice_router = inspect.getfile(chalice.app)
+        if chalice_router.endswith(".pyc"):
+            chalice_router = chalice_router[:-1]
+        zip.write(chalice_router, "chalice/app.py")
+
+        chalice_init = inspect.getfile(chalice)
+        if chalice_init.endswith(".pyc"):
+            chalice_init = chalice_init[:-1]
+        zip.write(chalice_init, "chalice/__init__.py")
+
+        zip.write(os.path.join(project_dir, "app.py"), "app.py")
         self._add_chalice_lib_if_needed(project_dir, zip)
 
 class NoOpDeployer(APIGatewayDeployer):
@@ -71,15 +82,16 @@ if not deployer._lambda_deploy._app_policy.load_last_policy(config)["Statement"]
         deployer._lambda_deploy._app_policy.record_policy(config, json.load(fh))
 
 deployed_values = deployer.deploy(config)
-record_deployed_values(deployed_values, os.path.join(config.project_dir, '.chalice', 'deployed.json'))
+record_deployed_values(deployed_values, os.path.join(config.project_dir, ".chalice", "deployed.json"))
 domovoi_app = config.chalice_app
 lambda_arn = config.deployed_resources(config.chalice_stage).api_handler_arn
 
-for service in ('apigateway.amazonaws.com', 'events.amazonaws.com', 'sns.amazonaws.com'):
+# FIXME: permissions should be granular to at least the account, to prevent unauthorized invocation
+for service in ("apigateway.amazonaws.com", "events.amazonaws.com", "sns.amazonaws.com", "s3.amazonaws.com"):
     awslambda.add_permission(FunctionName=lambda_arn,
                              StatementId=str(uuid.uuid4()),
                              Principal=service,
-                             Action='lambda:InvokeFunction')
+                             Action="lambda:InvokeFunction")
 
 for task_name, task in domovoi_app.cloudwatch_events_rules.items():
     print("Scheduling", task_name, "to run on schedule ", task["schedule_expression"], "pattern", task["event_pattern"])
