@@ -37,6 +37,7 @@ class Domovoi(Chalice):
     def cloudwatch_event_handler(self, **kwargs):
         return self.cloudwatch_rule(schedule_expression=None, event_pattern=kwargs)
 
+    # FIXME: support multiple event handlers per bucket
     def s3_event_handler(self, bucket, events, prefix=None, suffix=None):
         def register_s3_subscriber(func):
             self.s3_subscribers[bucket] = dict(events=events, prefix=prefix, suffix=suffix, func=func)
@@ -57,7 +58,10 @@ class Domovoi(Chalice):
         if "task_name" in event:
             handler = self.cloudwatch_events_rules[event["task_name"]]["func"]
             event = event["event"]
-        elif "Records" in event:
+        elif "Records" in event and "s3" in event["Records"][0]:
+            s3_bucket_name = event["Records"][0]["s3"]["bucket"]["name"]
+            handler = self.s3_subscribers[s3_bucket_name]["func"]
+        elif "Records" in event and "Sns" in event["Records"][0]:
             sns_topic = ARN(event["Records"][0]["Sns"]["TopicArn"]).resource
             handler = self.sns_subscribers[sns_topic]
         else:
