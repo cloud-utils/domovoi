@@ -67,11 +67,11 @@ can be used to trigger Lambda functions. Domovoi supports the following event so
 
 * SNS subscriptions
 * CloudWatch Events rule targets, including CloudWatch Scheduled Events (see http://docs.aws.amazon.com/AmazonCloudWatch/latest/events/EventTypes.html for a list of event types supported by CloudWatch Events)
+* S3 events
 
 TODO:
 
 * CloudWatch Logs filter subscriptions
-* S3 events
 * DynamoDB events
 * SES (email) events
 
