@@ -1,3 +1,8 @@
+Changes for v1.0.3 (2017-06-08)
+===============================
+
+-  Ensure S3 bucket notifications work without filters specified
+
 Changes for v1.0.2 (2017-06-01)
 ===============================
 
