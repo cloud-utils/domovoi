@@ -71,7 +71,7 @@ s3 = boto3_session.resource("s3")
 sts = boto3_session.client("sts")
 
 factory = CLIFactory(args.project_dir)
-config = factory.create_config_obj()
+config = factory.create_config_obj(autogen_policy=False)
 deployer = factory.create_default_deployer(session=botocore_session, prompter=None)
 deployer._lambda_deploy._packager = DomovoiDeploymentPackager()
 deployer._apigateway_deploy = NoOpDeployer(deployer._apigateway_deploy._aws_client)
