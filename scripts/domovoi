@@ -2,7 +2,7 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import os, sys, argparse, inspect, json, uuid
+import os, sys, argparse, inspect, json, hashlib
 
 import chalice, chalice.app
 from chalice.cli.factory import create_botocore_session, CLIFactory
@@ -88,10 +88,13 @@ lambda_arn = config.deployed_resources(config.chalice_stage).api_handler_arn
 
 # FIXME: permissions should be granular to at least the account, to prevent unauthorized invocation
 for service in ("apigateway.amazonaws.com", "events.amazonaws.com", "sns.amazonaws.com", "s3.amazonaws.com"):
-    awslambda.add_permission(FunctionName=lambda_arn,
-                             StatementId=str(uuid.uuid4()),
-                             Principal=service,
-                             Action="lambda:InvokeFunction")
+    policy = dict(FunctionName=lambda_arn, Principal=service, Action="lambda:InvokeFunction")
+    policy_id = "domovoi-{}".format(hashlib.md5(json.dumps(policy).encode()).hexdigest()[:8])
+    print("Granting {} access to invoke Lambda function {}".format(service, lambda_arn))
+    try:
+        awslambda.add_permission(StatementId=policy_id, **policy)
+    except awslambda.exceptions.ResourceConflictException:
+        print("Found existing permission grant statement {}, skipping".format(policy_id)
 
 for task_name, task in domovoi_app.cloudwatch_events_rules.items():
     print("Scheduling", task_name, "to run on schedule ", task["schedule_expression"], "pattern", task["event_pattern"])
