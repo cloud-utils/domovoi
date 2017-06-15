@@ -94,7 +94,7 @@ for service in ("apigateway.amazonaws.com", "events.amazonaws.com", "sns.amazona
     try:
         awslambda.add_permission(StatementId=policy_id, **policy)
     except awslambda.exceptions.ResourceConflictException:
-        print("Found existing permission grant statement {}, skipping".format(policy_id)
+        print("Found existing permission grant statement {}, skipping".format(policy_id))
 
 for task_name, task in domovoi_app.cloudwatch_events_rules.items():
     print("Scheduling", task_name, "to run on schedule ", task["schedule_expression"], "pattern", task["event_pattern"])
