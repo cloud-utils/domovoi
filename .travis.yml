@@ -5,6 +5,10 @@ python:
   - 2.7
   - 3.6
 
+env:
+  global:
+  - AWS_DEFAULT_REGION=us-east-1
+
 before_install:
   - pip install --quiet coverage flake8 pyyaml
 
