@@ -1,3 +1,8 @@
+Changes for v1.0.5 (2017-06-15)
+===============================
+
+Enable idempotent Lambda permission grants
+
 Changes for v1.0.4 (2017-06-09)
 ===============================
 
