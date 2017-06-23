@@ -11,8 +11,8 @@ class Domovoi(Chalice):
     cloudwatch_events_rules = {}
     sns_subscribers = {}
     s3_subscribers = {}
-    def __init__(self, app_name="Domovoi"):
-        Chalice.__init__(self, app_name=app_name, configure_logs=False)
+    def __init__(self, app_name="Domovoi", configure_logs=True):
+        Chalice.__init__(self, app_name=app_name, configure_logs=configure_logs)
 
     def scheduled_function(self, schedule):
         return self.cloudwatch_rule(schedule_expression=schedule, event_pattern=None)
