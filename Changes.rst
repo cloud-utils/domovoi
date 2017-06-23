@@ -1,3 +1,10 @@
+Changes for v1.0.7 (2017-06-22)
+===============================
+
+-  Pass through configure\_logs
+
+-  Test improvements
+
 Changes for v1.0.6 (2017-06-15)
 ===============================
 
