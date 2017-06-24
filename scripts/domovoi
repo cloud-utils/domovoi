@@ -132,7 +132,13 @@ for s3_bucket, event_handler in domovoi_app.s3_subscribers.items():
             cfg["Filter"]["Key"]["FilterRules"].append(dict(Name=fltr, Value=event_handler[fltr]))
     if args.dry_run:
         continue
-    s3.Bucket(s3_bucket).Notification().put(NotificationConfiguration=dict(LambdaFunctionConfigurations=[cfg]))
+    notification = s3.Bucket(s3_bucket).Notification()
+    lambda_config = list(notification.lambda_function_configurations or [])
+    new_lambda_config = [cfg] + [cfg for cfg in lambda_config if cfg["LambdaFunctionArn"] != lambda_arn]
+    new_config = dict(LambdaFunctionConfigurations=new_lambda_config,
+                      QueueConfigurations=notification.queue_configurations or [],
+                      TopicConfigurations=notification.topic_configurations or [])
+    notification.put(NotificationConfiguration=new_config)
 
 if args.dry_run:
     print("Dry run successful")
