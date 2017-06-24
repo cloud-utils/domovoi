@@ -1,3 +1,8 @@
+Changes for v1.0.8 (2017-06-24)
+===============================
+
+-  Don't clobber existing S3 bucket notifications
+
 Changes for v1.0.7 (2017-06-22)
 ===============================
 
