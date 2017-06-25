@@ -53,6 +53,14 @@ class NoOpDeployer(APIGatewayDeployer):
     def delete(self, *args, **kwargs):
         pass
 
+def add_filter_config(event_config, event_handler):
+    cfg = dict(event_config)
+    for fltr in "prefix", "suffix":
+        if event_handler.get(fltr):
+            cfg.setdefault("Filter", dict(Key=dict(FilterRules=[])))
+            cfg["Filter"]["Key"]["FilterRules"].append(dict(Name=fltr, Value=event_handler[fltr]))
+    return cfg
+
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument("--profile")
@@ -125,19 +133,32 @@ for sns_topic, event_handler in domovoi_app.sns_subscribers.items():
 
 for s3_bucket, event_handler in domovoi_app.s3_subscribers.items():
     print("Subscribing", event_handler, "to events in S3 bucket", s3_bucket)
-    cfg = dict(LambdaFunctionArn=lambda_arn, Events=event_handler["events"])
-    for fltr in "prefix", "suffix":
-        if event_handler.get(fltr):
-            cfg.setdefault("Filter", dict(Key=dict(FilterRules=[])))
-            cfg["Filter"]["Key"]["FilterRules"].append(dict(Name=fltr, Value=event_handler[fltr]))
     if args.dry_run:
         continue
+    if event_handler["use_sns"]:
+        sns_topic = sns.create_topic(Name="domovoi-s3-bucket-events-{}".format(s3_bucket))
+        policy = {"Statement": [{"Action": ["SNS:Publish"],
+                                 "Effect": "Allow",
+                                 "Resource": sns_topic.arn,
+                                 "Principal": {"Service": ["s3.amazonaws.com"]}}]}
+        sns_topic.set_attributes(AttributeName="Policy", AttributeValue=json.dumps(policy))
+        subscription = sns_topic.subscribe(Protocol="lambda", Endpoint=lambda_arn)
+        print("Subscribed to", subscription)
+        topic_configuration = dict(TopicArn=sns_topic.arn, Events=event_handler["events"])
+        topic_configuration = add_filter_config(topic_configuration, event_handler)
+    else:
+        lambda_function_configuration = dict(LambdaFunctionArn=lambda_arn, Events=event_handler["events"])
+        lambda_function_configuration = add_filter_config(lambda_function_configuration, event_handler)
     notification = s3.Bucket(s3_bucket).Notification()
-    lambda_config = list(notification.lambda_function_configurations or [])
-    new_lambda_config = [cfg] + [cfg for cfg in lambda_config if cfg["LambdaFunctionArn"] != lambda_arn]
-    new_config = dict(LambdaFunctionConfigurations=new_lambda_config,
+    new_config = dict(LambdaFunctionConfigurations=notification.lambda_function_configurations or [],
                       QueueConfigurations=notification.queue_configurations or [],
                       TopicConfigurations=notification.topic_configurations or [])
+    if event_handler["use_sns"]:
+        old_cfgs = [cfg for cfg in new_config["TopicConfigurations"] if cfg["TopicArn"] != sns_topic.arn]
+        new_config["TopicConfigurations"] = [topic_configuration] + old_cfgs
+    else:
+        old_cfgs = [cfg for cfg in new_config["LambdaFunctionConfigurations"] if cfg["LambdaFunctionArn"] != lambda_arn]
+        new_config["LambdaFunctionConfigurations"] = [lambda_function_configuration] + old_cfgs
     notification.put(NotificationConfiguration=new_config)
 
 if args.dry_run:
