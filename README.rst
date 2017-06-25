@@ -39,7 +39,7 @@ schedule or in response to an `SNS <https://aws.amazon.com/sns/>`_ push notifica
         message = json.loads(event["Records"][0]["Sns"]["Message"])
         context.log("Got an event from S3: {}".format(message))
 
-    # Set use_sns=False to subscribe your Lambda directly to S3 events without using an SNS topic.
+    # Set use_sns=False to subscribe your Lambda directly to S3 events without forwrading them through an SNS topic.
     # This has fewer moving parts, but you can only subscribe one Lambda function to events in a given S3 bucket.
     @app.s3_event_handler(bucket="myS3bucket", events=["s3:ObjectCreated:*"], prefix="foo", suffix=".bar", use_sns=False)
     def monitor_s3(event, context):
