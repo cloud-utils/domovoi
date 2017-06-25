@@ -1,3 +1,8 @@
+Changes for v1.0.9 (2017-06-24)
+===============================
+
+-  Forward S3 notifications through SNS by default
+
 Changes for v1.0.8 (2017-06-24)
 ===============================
 
