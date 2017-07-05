@@ -10,6 +10,7 @@ from chalice.deploy.packager import LambdaDeploymentPackager
 from chalice.deploy.deployer import APIGatewayDeployer
 from chalice.config import Config
 from chalice.utils import record_deployed_values
+from chalice.constants import DEFAULT_STAGE_NAME
 import boto3.session
 
 import domovoi
@@ -63,6 +64,7 @@ def add_filter_config(event_config, event_handler):
 
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+parser.add_argument("--stage", default=DEFAULT_STAGE_NAME)
 parser.add_argument("--profile")
 parser.add_argument("--debug", action="store_true")
 parser.add_argument("--dry-run", action="store_true")
@@ -80,7 +82,7 @@ s3 = boto3_session.resource("s3")
 sts = boto3_session.client("sts")
 
 factory = CLIFactory(args.project_dir)
-config = factory.create_config_obj(autogen_policy=False)
+config = factory.create_config_obj(chalice_stage_name=args.stage, autogen_policy=False)
 deployer = factory.create_default_deployer(session=botocore_session, prompter=None)
 deployer._lambda_deploy._packager = DomovoiDeploymentPackager()
 deployer._apigateway_deploy = NoOpDeployer(deployer._apigateway_deploy._aws_client)
