@@ -95,7 +95,7 @@ if not deployer._lambda_deploy._app_policy.load_last_policy(config)["Statement"]
 if args.dry_run:
     lambda_arn = "arn:aws:lambda:::"
 else:
-    deployed_values = deployer.deploy(config)
+    deployed_values = deployer.deploy(config, chalice_stage_name=args.stage)
     record_deployed_values(deployed_values, os.path.join(config.project_dir, ".chalice", "deployed.json"))
     lambda_arn = config.deployed_resources(config.chalice_stage).api_handler_arn
 
