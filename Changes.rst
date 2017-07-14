@@ -1,3 +1,8 @@
+Changes for v1.2.1 (2017-07-14)
+===============================
+
+-  Simplify DLQ handling; add docs for DLQ
+
 Changes for v1.2.0 (2017-07-14)
 ===============================
 
