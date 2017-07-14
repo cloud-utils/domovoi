@@ -4,13 +4,14 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import os, sys, argparse, inspect, json, hashlib
 
-import chalice, chalice.app
+import chalice, chalice.app, chalice.cli.factory
 from chalice.cli.factory import create_botocore_session, CLIFactory
 from chalice.deploy.packager import LambdaDeploymentPackager
 from chalice.deploy.deployer import APIGatewayDeployer
-from chalice.config import Config
+from chalice.config import Config as ChaliceConfig
 from chalice.utils import record_deployed_values
 from chalice.constants import DEFAULT_STAGE_NAME
+from chalice.awsclient import TypedAWSClient
 import boto3.session
 
 import domovoi
@@ -53,6 +54,14 @@ class NoOpDeployer(APIGatewayDeployer):
 
     def delete(self, *args, **kwargs):
         pass
+
+class DomovoiConfig(ChaliceConfig):
+    @property
+    def dead_letter_queue_target_arn(self):
+        return self._chain_lookup('dead_letter_queue_target_arn')
+
+
+chalice.cli.factory.Config = DomovoiConfig
 
 def add_filter_config(event_config, event_handler):
     cfg = dict(event_config)
@@ -98,6 +107,12 @@ else:
     deployed_values = deployer.deploy(config, chalice_stage_name=args.stage)
     record_deployed_values(deployed_values, os.path.join(config.project_dir, ".chalice", "deployed.json"))
     lambda_arn = config.deployed_resources(config.chalice_stage).api_handler_arn
+    if config.dead_letter_queue_target_arn:
+        client = TypedAWSClient(botocore_session)._client('lambda')
+        function_name = '%s-%s' % (config.app_name, args.stage)
+        print("Setting DLQ {} for {}".format(config.dead_letter_queue_target_arn, function_name))
+        client.update_function_configuration(FunctionName=function_name,
+                                             DeadLetterConfig=dict(TargetArn=config.dead_letter_queue_target_arn))
 
 domovoi_app = config.chalice_app
 
