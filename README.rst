@@ -68,7 +68,7 @@ with your function executing in ``/var/task/app.py`` with ``/var/task`` as the w
 `Chalice docs <http://chalice.readthedocs.io/>`_ for more information on how to set up Chalice configuration.
 
 Supported event types
----------------------
+~~~~~~~~~~~~~~~~~~~~~
 See http://docs.aws.amazon.com/lambda/latest/dg/invoking-lambda-function.html for an overview of event sources that
 can be used to trigger Lambda functions. Domovoi supports the following event sources:
 
@@ -81,6 +81,20 @@ TODO:
 * CloudWatch Logs filter subscriptions
 * DynamoDB events
 * SES (email) events
+
+Configuration: Dead Letter Queues
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+To enable your Lambda function to forward failed invocation notifications to `dead letter queuees
+<http://docs.aws.amazon.com/lambda/latest/dg/dlq.html>`_, set the configuration key ``dead_letter_queue_target_arn`` in
+the file ``.chalice/config.json`` to the target DLQ ARN. For example::
+
+  {
+    "app_name": "my_app",
+    ...
+    "dead_letter_queue_target_arn": "arn:aws:sns:us-east-1:123456789012:it-ded"
+  }
+
+You may need to update your Lambda IAM policy (``.chalice/policy.json``) to give your Lambda access to SNS or SQS.
 
 Links
 -----
