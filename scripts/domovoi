@@ -83,7 +83,10 @@ sts = boto3_session.client("sts")
 
 factory = CLIFactory(args.project_dir)
 config = factory.create_config_obj(chalice_stage_name=args.stage, autogen_policy=False)
-deployer = factory.create_default_deployer(session=botocore_session, prompter=None)
+try:
+    deployer = factory.create_default_deployer(session=botocore_session, ui=None)
+except TypeError: # Chalice before 1.0
+    deployer = factory.create_default_deployer(session=botocore_session, prompter=None)
 deployer._lambda_deploy._packager = DomovoiDeploymentPackager()
 deployer._apigateway_deploy = NoOpDeployer(deployer._apigateway_deploy._aws_client)
 
