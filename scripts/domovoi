@@ -87,7 +87,7 @@ config = factory.create_config_obj(chalice_stage_name=args.stage, autogen_policy
 factory_args = {"ui": None} if chalice_version >= "1.0" else {"prompter": None}
 deployer = factory.create_default_deployer(session=botocore_session, **factory_args)
 deployer._lambda_deploy._packager.__class__ = DomovoiDeploymentPackager
-deployer._apigateway_deploy = NoOpDeployer(deployer._apigateway_deploy._aws_client)
+deployer._apigateway_deploy.__class__ = NoOpDeployer
 
 if not deployer._lambda_deploy._app_policy.load_last_policy(config)["Statement"]:
     default_iam_policy_filename = os.path.join(os.path.dirname(domovoi.__file__), "default_iam_policy.json")
