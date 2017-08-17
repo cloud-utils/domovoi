@@ -85,9 +85,14 @@ factory = CLIFactory(args.project_dir)
 config = factory.create_config_obj(chalice_stage_name=args.stage, autogen_policy=False)
 try:
     deployer = factory.create_default_deployer(session=botocore_session, ui=None)
+    deployer._lambda_deploy._packager = DomovoiDeploymentPackager(
+        osutils=deployer._lambda_deploy._packager._osutils,
+        dependency_builder=deployer._lambda_deploy._packager._dependency_builder,
+        ui=deployer._lambda_deploy._packager._ui
+    )
 except TypeError: # Chalice before 1.0
     deployer = factory.create_default_deployer(session=botocore_session, prompter=None)
-deployer._lambda_deploy._packager = DomovoiDeploymentPackager()
+    deployer._lambda_deploy._packager = DomovoiDeploymentPackager()
 deployer._apigateway_deploy = NoOpDeployer(deployer._apigateway_deploy._aws_client)
 
 if not deployer._lambda_deploy._app_policy.load_last_policy(config)["Statement"]:
