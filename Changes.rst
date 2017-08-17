@@ -1,3 +1,8 @@
+Changes for v1.2.5 (2017-08-17)
+===============================
+
+Avoid running privileged op on update
+
 Changes for v1.2.4 (2017-08-17)
 ===============================
 
