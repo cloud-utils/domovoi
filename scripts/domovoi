@@ -11,7 +11,8 @@ from chalice.deploy.packager import LambdaDeploymentPackager
 from chalice.deploy.deployer import APIGatewayDeployer
 from chalice.utils import record_deployed_values
 from chalice.constants import DEFAULT_STAGE_NAME
-from chalice.awsclient import TypedAWSClient
+import chalice.awsclient, chalice.deploy.deployer
+
 import boto3.session
 
 import domovoi
@@ -54,6 +55,15 @@ class NoOpDeployer(APIGatewayDeployer):
 
     def delete(self, *args, **kwargs):
         pass
+
+class DSSChaliceTypedAWSClient(chalice.awsclient.TypedAWSClient):
+    def update_function(self, *args, **kwargs):
+        kwargs.pop("role_arn", None)
+        super(DSSChaliceTypedAWSClient, self).update_function(*args, **kwargs)
+
+
+chalice.awsclient.TypedAWSClient = DSSChaliceTypedAWSClient
+chalice.deploy.deployer.TypedAWSClient = DSSChaliceTypedAWSClient
 
 def add_filter_config(event_config, event_handler):
     cfg = dict(event_config)
@@ -102,7 +112,7 @@ else:
     lambda_arn = config.deployed_resources(config.chalice_stage).api_handler_arn
     dlq_arn = config._chain_lookup('dead_letter_queue_target_arn')
     if dlq_arn:
-        client = TypedAWSClient(botocore_session)._client('lambda')
+        client = chalice.awsclient.TypedAWSClient(botocore_session)._client('lambda')
         function_name = '%s-%s' % (config.app_name, args.stage)
         print("Setting DLQ {} for {}".format(dlq_arn, function_name))
         client.update_function_configuration(FunctionName=function_name, DeadLetterConfig=dict(TargetArn=dlq_arn))
