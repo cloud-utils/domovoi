@@ -5,6 +5,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import os, sys, argparse, inspect, json, hashlib
 
 import chalice, chalice.app
+from chalice import __version__ as chalice_version
 from chalice.cli.factory import create_botocore_session, CLIFactory
 from chalice.deploy.packager import LambdaDeploymentPackager
 from chalice.deploy.deployer import APIGatewayDeployer
@@ -83,16 +84,9 @@ sts = boto3_session.client("sts")
 
 factory = CLIFactory(args.project_dir)
 config = factory.create_config_obj(chalice_stage_name=args.stage, autogen_policy=False)
-try:
-    deployer = factory.create_default_deployer(session=botocore_session, ui=None)
-    deployer._lambda_deploy._packager = DomovoiDeploymentPackager(
-        osutils=deployer._lambda_deploy._packager._osutils,
-        dependency_builder=deployer._lambda_deploy._packager._dependency_builder,
-        ui=deployer._lambda_deploy._packager._ui
-    )
-except TypeError: # Chalice before 1.0
-    deployer = factory.create_default_deployer(session=botocore_session, prompter=None)
-    deployer._lambda_deploy._packager = DomovoiDeploymentPackager()
+factory_args = {"ui": None} if chalice_version >= "1.0" else {"prompter": None}
+deployer = factory.create_default_deployer(session=botocore_session, **factory_args)
+deployer._lambda_deploy._packager.__class__ = DomovoiDeploymentPackager
 deployer._apigateway_deploy = NoOpDeployer(deployer._apigateway_deploy._aws_client)
 
 if not deployer._lambda_deploy._app_policy.load_last_policy(config)["Statement"]:
