@@ -4,6 +4,9 @@ import json
 
 from chalice.app import Chalice
 
+class DomovoiException(Exception):
+    pass
+
 class ARN:
     fields = "arn partition service region account_id resource".split()
     def __init__(self, arn="arn:aws::::", **kwargs):
@@ -55,6 +58,7 @@ class Domovoi(Chalice):
         return register_rule
 
     def _find_sns_s3_event_sub(self, sns_s3_event):
+        assert sns_s3_event['Records'][0]["Sns"]['Subject'] == 'Amazon S3 Notification'
         s3_event = json.loads(sns_s3_event['Records'][0]["Sns"]["Message"])
         s3_bucket_name = s3_event.get("Bucket") or s3_event['Records'][0]["s3"]["bucket"]["name"]
         handler = self.s3_subscribers[s3_bucket_name]["func"] if s3_bucket_name in self.s3_subscribers else None
@@ -63,19 +67,25 @@ class Domovoi(Chalice):
     def __call__(self, event, context):
         context.log("Domovoi dispatch of event {}".format(event))
         if "task_name" in event:
+            if event["task_name"] not in self.cloudwatch_events_rules:
+                raise DomovoiException("Received CloudWatch event for a task with no known handler")
             handler = self.cloudwatch_events_rules[event["task_name"]]["func"]
             event = event["event"]
         elif "Records" in event and "s3" in event["Records"][0]:
             s3_bucket_name = event["Records"][0]["s3"]["bucket"]["name"]
+            if s3_bucket_name not in self.s3_subscribers:
+                raise DomovoiException("Received S3 event for a bucket with no known handler")
             handler = self.s3_subscribers[s3_bucket_name]["func"]
         elif "Records" in event and "Sns" in event["Records"][0]:
-            if event['Records'][0]["Sns"]['Subject'] == 'Amazon S3 Notification' and self._find_sns_s3_event_sub(event):
+            try:
                 event, handler = self._find_sns_s3_event_sub(event)
-            else:
+            except Exception:
                 sns_topic = ARN(event["Records"][0]["Sns"]["TopicArn"]).resource
+                if sns_topic not in self.sns_subscribers:
+                    raise DomovoiException("Received SNS or S3-SNS event with no known handler")
                 handler = self.sns_subscribers[sns_topic]
         else:
-            raise Exception("No handler found for event {}".format(event))
+            raise DomovoiException("No handler found for event {}".format(event))
         result = handler(event, context)
         context.log(result)
         return result
