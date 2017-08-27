@@ -4,7 +4,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import os, sys, argparse, inspect, json, hashlib
 
-import chalice, chalice.app
+import chalice, chalice.app, chalice.deploy.packager
 from chalice import __version__ as chalice_version
 from chalice.cli.factory import create_botocore_session, CLIFactory
 from chalice.deploy.packager import LambdaDeploymentPackager
@@ -73,6 +73,9 @@ def add_filter_config(event_config, event_handler):
             cfg["Filter"]["Key"]["FilterRules"].append(dict(Name=fltr, Value=event_handler[fltr]))
     return cfg
 
+
+# See https://github.com/aws/chalice/issues/497 for discussion
+chalice.deploy.packager.subprocess_python_base_environ = {"PATH": os.environ["PATH"]}
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument("--stage", default=DEFAULT_STAGE_NAME)
