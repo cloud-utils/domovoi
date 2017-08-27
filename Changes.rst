@@ -1,3 +1,10 @@
+Changes for v1.2.6 (2017-08-26)
+===============================
+
+-  Monkey-patch chalice to avoid dependency wheel management bug
+
+-  Use more intuitive errors when handler not found
+
 Changes for v1.2.5 (2017-08-17)
 ===============================
 
