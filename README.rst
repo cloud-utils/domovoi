@@ -5,7 +5,8 @@ Domovoi: AWS Lambda event handler manager
 <https://aws.amazon.com/lambda/>`_ `event sources
 <http://docs.aws.amazon.com/lambda/latest/dg/invoking-lambda-function.html#intro-core-components-event-sources>`_ other
 than HTTP requests through API Gateway. Domovoi lets you easily configure and deploy a Lambda function to run on a
-schedule or in response to an `SNS <https://aws.amazon.com/sns/>`_ push notification:
+schedule or in response to a variety of events like an `SNS <https://aws.amazon.com/sns/>`_ push notification, S3 event, or
+custom state machine transition:
 
 .. code-block:: python
 
