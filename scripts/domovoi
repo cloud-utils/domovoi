@@ -2,7 +2,7 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import os, sys, argparse, inspect, json, hashlib
+import os, sys, argparse, inspect, json, hashlib, time, copy
 
 import chalice, chalice.app, chalice.deploy.packager
 from chalice import __version__ as chalice_version
@@ -74,8 +74,9 @@ def add_filter_config(event_config, event_handler):
     return cfg
 
 
-# See https://github.com/aws/chalice/issues/497 for discussion
-chalice.deploy.packager.subprocess_python_base_environ = {"PATH": os.environ["PATH"]}
+trust_statement = copy.deepcopy(chalice.constants.LAMBDA_TRUST_POLICY["Statement"][0])
+trust_statement["Principal"] = {"Service": "states.us-east-1.amazonaws.com"}
+chalice.constants.LAMBDA_TRUST_POLICY["Statement"].append(trust_statement)
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument("--stage", default=DEFAULT_STAGE_NAME)
@@ -94,6 +95,8 @@ sns = boto3_session.resource("sns")
 awslambda = boto3_session.client("lambda")
 s3 = boto3_session.resource("s3")
 sts = boto3_session.client("sts")
+sfn = boto3.client("stepfunctions")
+iam = boto3_session.resource("iam")
 
 factory = CLIFactory(args.project_dir)
 config = factory.create_config_obj(chalice_stage_name=args.stage, autogen_policy=False)
@@ -101,6 +104,7 @@ factory_args = {"ui": None} if chalice_version >= "1.0" else {"prompter": None}
 deployer = factory.create_default_deployer(session=botocore_session, **factory_args)
 deployer._lambda_deploy._packager.__class__ = DomovoiDeploymentPackager
 deployer._apigateway_deploy.__class__ = NoOpDeployer
+function_name = '%s-%s' % (config.app_name, args.stage)
 
 if not deployer._lambda_deploy._app_policy.load_last_policy(config)["Statement"]:
     default_iam_policy_filename = os.path.join(os.path.dirname(domovoi.__file__), "default_iam_policy.json")
@@ -116,7 +120,6 @@ else:
     dlq_arn = config._chain_lookup('dead_letter_queue_target_arn')
     if dlq_arn:
         client = chalice.awsclient.TypedAWSClient(botocore_session)._client('lambda')
-        function_name = '%s-%s' % (config.app_name, args.stage)
         print("Setting DLQ {} for {}".format(dlq_arn, function_name))
         client.update_function_configuration(FunctionName=function_name, DeadLetterConfig=dict(TargetArn=dlq_arn))
 
@@ -183,6 +186,50 @@ for s3_bucket, event_handler in domovoi_app.s3_subscribers.items():
         old_cfgs = [cfg for cfg in new_config["LambdaFunctionConfigurations"] if cfg["LambdaFunctionArn"] != lambda_arn]
         new_config["LambdaFunctionConfigurations"] = [lambda_function_configuration] + old_cfgs
     notification.put(NotificationConfiguration=new_config)
+
+state_machine = None
+for sfn_task_name, sfn_task in domovoi_app.sfn_tasks.items():
+    print("Registering step function state machine for", sfn_task_name)
+    if state_machine is None:
+        state_machine = sfn_task["state_machine_definition"]
+    else:
+        msg = "Multiple state machine definitions are not supported"
+        assert state_machine == sfn_task["state_machine_definition"], msg
+    lambda_alias = "domovoi_stepfunctions_task_" + sfn_task_name
+    alias_args = dict(FunctionName=function_name,
+                      Name=lambda_alias,
+                      FunctionVersion="$LATEST",
+                      Description="Domovoi Lambda routing label for a Step Functions state machine task")
+    if not args.dry_run:
+        try:
+            awslambda.create_alias(**alias_args)
+        except awslambda.exceptions.ResourceConflictException:
+            awslambda.update_alias(**alias_args)
+        state_machine["States"][sfn_task["state_name"]]["Resource"] = lambda_arn + ":" + lambda_alias
+
+if state_machine and not args.dry_run:
+    iam_role_arn = config.iam_role_arn or iam.Role(function_name).arn
+    sm_args = dict(name=function_name,
+                   definition=json.dumps(state_machine),
+                   roleArn=iam_role_arn)
+    try:
+        sm = sfn.create_state_machine(**sm_args)
+    except sfn.exceptions.StateMachineAlreadyExists as e:
+        sm_arn = str(e).split(": ")[-1].strip("'")
+        sfn.delete_state_machine(stateMachineArn=sm_arn)
+        sys.stderr.write("Deleting existing state machine {}".format(sm_arn))
+        sys.stderr.flush()
+        while True:
+            try:
+                assert sfn.describe_state_machine(stateMachineArn=sm_arn)["status"] == "DELETING"
+                sys.stderr.write(".")
+                sys.stderr.flush()
+                time.sleep(1)
+            except sfn.exceptions.StateMachineDoesNotExist:
+                sys.stderr.write("OK\n")
+                break
+        sm = sfn.create_state_machine(**sm_args)
+    print("State machine:", sm["stateMachineArn"])
 
 if args.dry_run:
     print("Dry run successful")

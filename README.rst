@@ -46,6 +46,11 @@ schedule or in response to an `SNS <https://aws.amazon.com/sns/>`_ push notifica
         message = json.loads(event["Records"][0]["Sns"]["Message"])
         context.log("Got an event from S3: {}".format(message))
 
+    # See the "AWS Step Functions state machines" section below for a complete example of setting up a state machine.
+    @app.step_function_task(state_name="Worker", state_machine_definition={})
+    def worker(event, context):
+        return {"result": event["input"] + 1}
+
 Installation
 ------------
 ::
@@ -73,14 +78,28 @@ See http://docs.aws.amazon.com/lambda/latest/dg/invoking-lambda-function.html fo
 can be used to trigger Lambda functions. Domovoi supports the following event sources:
 
 * SNS subscriptions
-* CloudWatch Events rule targets, including CloudWatch Scheduled Events (see http://docs.aws.amazon.com/AmazonCloudWatch/latest/events/EventTypes.html for a list of event types supported by CloudWatch Events)
+* CloudWatch Events rule targets, including CloudWatch Scheduled Events (see
+  http://docs.aws.amazon.com/AmazonCloudWatch/latest/events/EventTypes.html for a list of event types supported by
+  CloudWatch Events)
 * S3 events
+* AWS Step Functions state machine tasks
 
 TODO:
 
 * CloudWatch Logs filter subscriptions
 * DynamoDB events
 * SES (email) events
+
+AWS Step Functions state machines
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Domovoi supports AWS Lambda integration with `AWS Step Functions
+<https://aws.amazon.com/documentation/step-functions>`_. Step Functions state machines can be started using the
+`StartExecution <http://docs.aws.amazon.com/step-functions/latest/apireference/API_StartExecution.html>`_ method or the
+`API Gateway Step Functions integration
+<http://docs.aws.amazon.com/step-functions/latest/dg/tutorial-api-gateway.html>`_.
+
+See `domovoi/examples/state_machine_app.py <domovoi/examples/state_machine_app.py>`_ for a complete example of a Domovoi
+``app.py`` using a state machine.
 
 Configuration: Dead Letter Queues
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
