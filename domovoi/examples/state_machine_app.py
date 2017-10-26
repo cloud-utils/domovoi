@@ -37,7 +37,7 @@ sfn = {
         },
         "Sleep": {
             "Type": "Wait",
-            "SecondsPath": "$.sleep",
+            "SecondsPath": "$.sleep_seconds",  # This is set by the worker lambda to control the delay before the next action.
             "Next": "Finalizer"
         },
         "Finalizer": {
@@ -61,7 +61,7 @@ class Worker:
             while True:
                 # This represents some long-running task that may not be interruptible from within Python.
                 time.sleep(9000)
-        return dict(x=x, sleep=random.randrange(8))
+        return dict(x=x, sleep_seconds=random.randrange(8))
 
 @app.step_function_task(state_name="Worker", state_machine_definition=sfn)
 def do_work(event, context):
