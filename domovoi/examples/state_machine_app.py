@@ -1,6 +1,6 @@
 #!/usr/bin/env python3.6
 
-import os, sys, json, time, random, signal, base64, pickle
+import os, sys, json, time, random, signal, base64, pickle, zlib
 import boto3, domovoi
 
 app = domovoi.Domovoi()
@@ -18,6 +18,7 @@ sfn = {
     Use the following command to invoke the state machine:
         $ aws stepfunctions start-execution --state-machine-arn ARN --input '{"x": 1}',
     where ARN is displayed in the result of `domovoi deploy`.
+    State machine input is passed directly in the `event` argument to the task handlers. There is a 32KB I/O size limit.
     """,
     "StartAt": "Worker",
     "States": {
@@ -37,7 +38,8 @@ sfn = {
         },
         "Sleep": {
             "Type": "Wait",
-            "SecondsPath": "$.sleep_seconds",  # This is set by the worker lambda to control the delay before the next action.
+            # This is a delay step that can be set by the worker lambda to avoid busy-waiting.
+            "SecondsPath": "$.sleep_seconds",
             "Next": "Finalizer"
         },
         "Finalizer": {
@@ -74,14 +76,14 @@ def do_work(event, context):
     signal.alarm(timeout_seconds)
 
     if "state" in event:
-        worker = pickle.loads(base64.b64decode(event["state"]))
+        worker = pickle.loads(zlib.decompress(base64.b64decode(event["state"])))
     else:
         worker = Worker()
 
     try:
         result = worker.run(event["x"])
     except DomovoiTimeout:
-        event.update(state=base64.b64encode(pickle.dumps(worker)).decode(), finished=False)
+        event.update(state=base64.b64encode(zlib.compress(pickle.dumps(worker))).decode(), finished=False)
         return event
 
     event.update(result, finished=True)
