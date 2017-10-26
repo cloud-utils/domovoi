@@ -16,6 +16,7 @@ class Domovoi(Chalice):
     cloudwatch_events_rules = {}
     sns_subscribers = {}
     s3_subscribers = {}
+    sfn_tasks = {}
     def __init__(self, app_name="Domovoi", configure_logs=True):
         Chalice.__init__(self, app_name=app_name, configure_logs=configure_logs)
 
@@ -57,6 +58,16 @@ class Domovoi(Chalice):
             return func
         return register_rule
 
+    def step_function_task(self, state_name, state_machine_definition):
+        def register_sfn_task(func):
+            if func.__name__ in self.sfn_tasks:
+                raise KeyError(func.__name__)
+            self.sfn_tasks[func.__name__] = dict(state_name=state_name,
+                                                 state_machine_definition=state_machine_definition,
+                                                 func=func)
+            return func
+        return register_sfn_task
+
     def _find_sns_s3_event_sub(self, sns_s3_event):
         assert sns_s3_event['Records'][0]["Sns"]['Subject'] == 'Amazon S3 Notification'
         s3_event = json.loads(sns_s3_event['Records'][0]["Sns"]["Message"])
@@ -66,6 +77,7 @@ class Domovoi(Chalice):
 
     def __call__(self, event, context):
         context.log("Domovoi dispatch of event {}".format(event))
+        invoked_function_arn = ARN(context.invoked_function_arn)
         if "task_name" in event:
             if event["task_name"] not in self.cloudwatch_events_rules:
                 raise DomovoiException("Received CloudWatch event for a task with no known handler")
@@ -84,6 +96,11 @@ class Domovoi(Chalice):
                 if sns_topic not in self.sns_subscribers:
                     raise DomovoiException("Received SNS or S3-SNS event with no known handler")
                 handler = self.sns_subscribers[sns_topic]
+        elif "domovoi_stepfunctions_task" in invoked_function_arn.resource:
+            _, lambda_name, lambda_alias = invoked_function_arn.resource.split(":")
+            assert lambda_alias.startswith("domovoi_stepfunctions_task_")
+            task_name = lambda_alias[len("domovoi_stepfunctions_task_"):]
+            handler = self.sfn_tasks[task_name]["func"]
         else:
             raise DomovoiException("No handler found for event {}".format(event))
         result = handler(event, context)
