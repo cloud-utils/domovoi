@@ -17,9 +17,6 @@ import boto3.session
 
 import domovoi
 
-import logging
-logging.basicConfig(level=logging.DEBUG)
-
 try:
     import pkg_resources
     __version__ = pkg_resources.get_distribution(__name__).version
@@ -28,7 +25,6 @@ except Exception:
 
 class DomovoiDeploymentPackager(LambdaDeploymentPackager):
     _CHALICE_LIB_DIR = "domovoilib"
-
     def _add_app_files(self, zip, project_dir):
         domovoi_router = inspect.getfile(domovoi.app)
         if domovoi_router.endswith(".pyc"):
