@@ -46,10 +46,10 @@ schedule or in response to an `SNS <https://aws.amazon.com/sns/>`_ push notifica
         message = json.loads(event["Records"][0]["Sns"]["Message"])
         context.log("Got an event from S3: {}".format(message))
 
-    # See the "Step Functions" section below for a complete example of setting up a state machine.
+    # See the "AWS Step Functions state machines" section below for a complete example of setting up a state machine.
     @app.step_function_task(state_name="Worker", state_machine_definition={})
     def worker(event, context):
-        return {"x": event["x"] + 1}
+        return {"result": event["input"] + 1}
 
 Installation
 ------------
