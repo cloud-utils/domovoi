@@ -56,12 +56,12 @@ class Worker:
         # The run() function should save its work in progress in attributes attached to self.
         # If the Lambda function runs out of time, the worker instance is pickled and restored when the lambda is
         # restarted, but all other state is lost.
-        x += 1
+        self.x = getattr(self, "x", 0) + x
         if random.random() < 0.8:
             while True:
                 # This represents some long-running task that may not be interruptible from within Python.
                 time.sleep(9000)
-        return dict(x=x, sleep_seconds=random.randrange(8))
+        return dict(x=self.x, sleep_seconds=random.randrange(8))
 
 @app.step_function_task(state_name="Worker", state_machine_definition=sfn)
 def do_work(event, context):
