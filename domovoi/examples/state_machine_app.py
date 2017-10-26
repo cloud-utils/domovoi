@@ -23,7 +23,7 @@ sfn = {
     "States": {
         "Worker": {
             "Type": "Task",
-            "Resource": "foo",
+            "Resource": None,  # This will be set by Domovoi to the Lambda ARN
             "Next": "Branch"
         },
         "Branch": {
@@ -42,7 +42,7 @@ sfn = {
         },
         "Finalizer": {
             "Type": "Task",
-            "Resource": "bar",
+            "Resource": None,  # This will be set by Domovoi to the Lambda ARN
             "End": True
         }
     }
