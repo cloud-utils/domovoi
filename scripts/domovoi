@@ -10,6 +10,7 @@ from chalice.cli.factory import create_botocore_session, CLIFactory
 from chalice.deploy.packager import LambdaDeploymentPackager
 from chalice.deploy.deployer import APIGatewayDeployer
 from chalice.utils import record_deployed_values
+from chalice.compat import urlparse
 from chalice.constants import DEFAULT_STAGE_NAME
 import chalice.awsclient, chalice.deploy.deployer
 
@@ -74,10 +75,6 @@ def add_filter_config(event_config, event_handler):
     return cfg
 
 
-trust_statement = copy.deepcopy(chalice.constants.LAMBDA_TRUST_POLICY["Statement"][0])
-trust_statement["Principal"] = {"Service": "states.us-east-1.amazonaws.com"}
-chalice.constants.LAMBDA_TRUST_POLICY["Statement"].append(trust_statement)
-
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument("--stage", default=DEFAULT_STAGE_NAME)
 parser.add_argument("--profile")
@@ -97,6 +94,10 @@ s3 = boto3_session.resource("s3")
 sts = boto3_session.client("sts")
 sfn = boto3.client("stepfunctions")
 iam = boto3_session.resource("iam")
+
+trust_statement = copy.deepcopy(chalice.constants.LAMBDA_TRUST_POLICY["Statement"][0])
+trust_statement["Principal"] = {"Service": urlparse(sfn.meta.endpoint_url).netloc}
+chalice.constants.LAMBDA_TRUST_POLICY["Statement"].append(trust_statement)
 
 factory = CLIFactory(args.project_dir)
 config = factory.create_config_obj(chalice_stage_name=args.stage, autogen_policy=False)
