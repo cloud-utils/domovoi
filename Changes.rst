@@ -1,3 +1,10 @@
+Changes for v1.3.1 (2017-10-30)
+===============================
+
+-  Key state machine tasks by state name, not function name
+
+-  Parameterize sfn trust statement by region
+
 Changes for v1.3.0 (2017-10-26)
 ===============================
 
