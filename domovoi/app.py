@@ -60,11 +60,11 @@ class Domovoi(Chalice):
 
     def step_function_task(self, state_name, state_machine_definition):
         def register_sfn_task(func):
-            if func.__name__ in self.sfn_tasks:
-                raise KeyError(func.__name__)
-            self.sfn_tasks[func.__name__] = dict(state_name=state_name,
-                                                 state_machine_definition=state_machine_definition,
-                                                 func=func)
+            if state_name in self.sfn_tasks:
+                raise KeyError(state_name)
+            self.sfn_tasks[state_name] = dict(state_name=state_name,
+                                              state_machine_definition=state_machine_definition,
+                                              func=func)
             return func
         return register_sfn_task
 
