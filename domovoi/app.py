@@ -98,8 +98,8 @@ class Domovoi(Chalice):
                 handler = self.sns_subscribers[sns_topic]
         elif "domovoi_stepfunctions_task" in invoked_function_arn.resource:
             _, lambda_name, lambda_alias = invoked_function_arn.resource.split(":")
-            assert lambda_alias.startswith("domovoi_stepfunctions_task_")
-            task_name = lambda_alias[len("domovoi_stepfunctions_task_"):]
+            assert lambda_alias.startswith("domovoi-stepfunctions-task-")
+            task_name = lambda_alias[len("domovoi-stepfunctions-task-"):]
             handler = self.sfn_tasks[task_name]["func"]
         else:
             raise DomovoiException("No handler found for event {}".format(event))

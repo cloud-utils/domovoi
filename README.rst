@@ -47,8 +47,9 @@ custom state machine transition:
         message = json.loads(event["Records"][0]["Sns"]["Message"])
         context.log("Got an event from S3: {}".format(message))
 
+    # See http://docs.aws.amazon.com/step-functions/latest/dg/concepts-amazon-states-language.html
     # See the "AWS Step Functions state machines" section below for a complete example of setting up a state machine.
-    @app.step_function_task(state_name="Worker", state_machine_definition={})
+    @app.step_function_task(state_name="Worker", state_machine_definition=state_machine)
     def worker(event, context):
         return {"result": event["input"] + 1}
 

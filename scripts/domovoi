@@ -74,6 +74,13 @@ def add_filter_config(event_config, event_handler):
             cfg["Filter"]["Key"]["FilterRules"].append(dict(Name=fltr, Value=event_handler[fltr]))
     return cfg
 
+def get_all_states(state_machine):
+    states = dict(state_machine["States"])
+    for state_name, state_data in state_machine["States"].items():
+        for sub_sm in state_data.get("Branches", []):
+            states.update(get_all_states(sub_sm))
+    return states
+
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument("--stage", default=DEFAULT_STAGE_NAME)
@@ -196,17 +203,19 @@ for sfn_task_name, sfn_task in domovoi_app.sfn_tasks.items():
     else:
         msg = "Multiple state machine definitions are not supported"
         assert state_machine == sfn_task["state_machine_definition"], msg
-    lambda_alias = "domovoi_stepfunctions_task_" + sfn_task_name
+    lambda_alias = "domovoi-stepfunctions-task-" + sfn_task_name
     alias_args = dict(FunctionName=function_name,
                       Name=lambda_alias,
                       FunctionVersion="$LATEST",
                       Description="Domovoi Lambda routing label for a Step Functions state machine task")
+    all_states = get_all_states(state_machine)
+    state = all_states[sfn_task["state_name"]]
     if not args.dry_run:
         try:
             awslambda.create_alias(**alias_args)
         except awslambda.exceptions.ResourceConflictException:
             awslambda.update_alias(**alias_args)
-        state_machine["States"][sfn_task["state_name"]]["Resource"] = lambda_arn + ":" + lambda_alias
+        state["Resource"] = lambda_arn + ":" + lambda_alias
 
 if state_machine and not args.dry_run:
     iam_role_arn = config.iam_role_arn or iam.Role(function_name).arn

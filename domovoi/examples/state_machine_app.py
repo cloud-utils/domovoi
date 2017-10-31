@@ -18,6 +18,9 @@ sfn = {
     Use the following command to invoke the state machine:
         $ aws stepfunctions start-execution --state-machine-arn ARN --input '{"x": 1}',
     where ARN is displayed in the result of `domovoi deploy`.
+    Use the following command to monitor execution of the state machine:
+        $ aws stepfunctions get-execution-history --execution-arn EXECUTION_ARN,
+    where EXECUTION_ARN is displayed in the result of `aws stepfunctions start-execution`.
     State machine input is passed directly in the `event` argument to the task handlers. There is a 32KB I/O size limit.
     """,
     "StartAt": "Worker",
