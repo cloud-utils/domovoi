@@ -96,7 +96,7 @@ class Domovoi(Chalice):
                 if sns_topic not in self.sns_subscribers:
                     raise DomovoiException("Received SNS or S3-SNS event with no known handler")
                 handler = self.sns_subscribers[sns_topic]
-        elif "domovoi_stepfunctions_task" in invoked_function_arn.resource:
+        elif "domovoi-stepfunctions-task" in invoked_function_arn.resource:
             _, lambda_name, lambda_alias = invoked_function_arn.resource.split(":")
             assert lambda_alias.startswith("domovoi-stepfunctions-task-")
             task_name = lambda_alias[len("domovoi-stepfunctions-task-"):]
