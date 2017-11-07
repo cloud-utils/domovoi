@@ -103,6 +103,11 @@ Domovoi supports AWS Lambda integration with `AWS Step Functions
 See `domovoi/examples/state_machine_app.py <domovoi/examples/state_machine_app.py>`_ for a complete example of a Domovoi
 ``app.py`` using a state machine.
 
+When creating a Step Functions State Machine driven Domovoi daemon Lambda, the State Machine assumes the same IAM role as
+the Lambda itself. To allow the State Machine to invoke the Lambda, edit the IAM policy (under your app directory, in
+`.chalice/policy.json`) to include a statement allowing the "lambda:InvokeFunction" action on all resources, or on the
+ARN of the Lambda itself.
+
 Configuration: Dead Letter Queues
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 To enable your Lambda function to forward failed invocation notifications to `dead letter queuees
