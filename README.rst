@@ -100,8 +100,9 @@ Domovoi supports AWS Lambda integration with `AWS Step Functions
 `API Gateway Step Functions integration
 <http://docs.aws.amazon.com/step-functions/latest/dg/tutorial-api-gateway.html>`_.
 
-See `domovoi/examples/state_machine_app.py <domovoi/examples/state_machine_app.py>`_ for a complete example of a Domovoi
-``app.py`` using a state machine.
+See the `domovoi/examples <domovoi/examples>`_ directory for examples of Domovoi ``app.py`` apps using a state machine,
+including a loop that restarts the Lambda when it's about to hit its execution time limit, and a threadpool pattern that
+divides work between multiple Lambdas.
 
 When creating a Step Functions State Machine driven Domovoi daemon Lambda, the State Machine assumes the same IAM role as
 the Lambda itself. To allow the State Machine to invoke the Lambda, edit the IAM policy (under your app directory, in
