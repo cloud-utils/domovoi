@@ -20,7 +20,7 @@ sfn = {
         },
         "Threadpool": {
             "Type": "Parallel",
-            "Branches": [],
+            "Branches": [],  # This will be filled in with an array of "thread" state machines below
             "Next": "Finalizer"
         },
         "Finalizer": {
