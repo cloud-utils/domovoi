@@ -1,3 +1,10 @@
+Changes for v1.4.0 (2017-11-09)
+===============================
+
+-  Add support for CloudWatch Logs subscription filter events
+
+-  Expand docs for step function / state machine examples
+
 Changes for v1.3.2 (2017-11-07)
 ===============================
 
