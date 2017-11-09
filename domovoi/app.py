@@ -100,14 +100,14 @@ class Domovoi(Chalice):
                 if sns_topic not in self.sns_subscribers:
                     raise DomovoiException("Received SNS or S3-SNS event with no known handler")
                 handler = self.sns_subscribers[sns_topic]
+        elif "awslogs" in event:
+            event = json.loads(gzip.decompress(base64.b64decode(event["awslogs"]["data"])))
+            handler = self.cwl_sub_filters[event["logGroup"]]["func"]
         elif "domovoi-stepfunctions-task" in invoked_function_arn.resource:
             _, lambda_name, lambda_alias = invoked_function_arn.resource.split(":")
             assert lambda_alias.startswith("domovoi-stepfunctions-task-")
             task_name = lambda_alias[len("domovoi-stepfunctions-task-"):]
             handler = self.sfn_tasks[task_name]["func"]
-        elif "awslogs" in event:
-            event = json.loads(gzip.decompress(base64.b64decode(event["awslogs"]["data"])))
-            handler = self.cwl_sub_filters[event["logGroup"]]["func"]
         else:
             raise DomovoiException("No handler found for event {}".format(event))
         result = handler(event, context)
