@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import json
+import json, gzip, base64
 
 from chalice.app import Chalice
 
@@ -17,6 +17,7 @@ class Domovoi(Chalice):
     sns_subscribers = {}
     s3_subscribers = {}
     sfn_tasks = {}
+    cwl_sub_filters = {}
     def __init__(self, app_name="Domovoi", configure_logs=True):
         Chalice.__init__(self, app_name=app_name, configure_logs=configure_logs)
 
@@ -36,9 +37,12 @@ class Domovoi(Chalice):
         # http://boto3.readthedocs.io/en/latest/reference/services/ses.html#SES.Client.create_receipt_rule
         raise NotImplementedError()
 
-    def cloudwatch_log_handler(self, log_group_name, filter_pattern):
-        # http://boto3.readthedocs.io/en/latest/reference/services/logs.html#CloudWatchLogs.Client.put_subscription_filter
-        raise NotImplementedError()
+    def cloudwatch_logs_sub_filter_handler(self, log_group_name, filter_pattern):
+        def register_cwl_subscription_filter(func):
+            self.cwl_sub_filters[log_group_name] = dict(log_group_name=log_group_name, filter_pattern=filter_pattern,
+                                                        func=func)
+            return func
+        return register_cwl_subscription_filter
 
     def cloudwatch_event_handler(self, **kwargs):
         return self.cloudwatch_rule(schedule_expression=None, event_pattern=kwargs)
@@ -101,6 +105,9 @@ class Domovoi(Chalice):
             assert lambda_alias.startswith("domovoi-stepfunctions-task-")
             task_name = lambda_alias[len("domovoi-stepfunctions-task-"):]
             handler = self.sfn_tasks[task_name]["func"]
+        elif "awslogs" in event:
+            event = json.loads(gzip.decompress(base64.b64decode(event["awslogs"]["data"])))
+            handler = self.cwl_sub_filters[event["logGroup"]]["func"]
         else:
             raise DomovoiException("No handler found for event {}".format(event))
         result = handler(event, context)

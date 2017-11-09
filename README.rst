@@ -47,6 +47,13 @@ custom state machine transition:
         message = json.loads(event["Records"][0]["Sns"]["Message"])
         context.log("Got an event from S3: {}".format(message))
 
+    # Use the following command to log a CloudWatch Logs message that will trigger this handler:
+    # python -c'import watchtower as w, logging as l; L=l.getLogger(); L.addHandler(w.CloudWatchLogHandler()); L.error(dict(x=8))'
+    # See http://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/FilterAndPatternSyntax.html for the filter pattern syntax
+    @app.cloudwatch_logs_sub_filter_handler(log_group_name="watchtower", filter_pattern="{$.x = 8}")
+    def monitor_cloudwatch_logs(event, context):
+        print("Got a CWL subscription filter event:", event)
+
     # See http://docs.aws.amazon.com/step-functions/latest/dg/concepts-amazon-states-language.html
     # See the "AWS Step Functions state machines" section below for a complete example of setting up a state machine.
     @app.step_function_task(state_name="Worker", state_machine_definition=state_machine)

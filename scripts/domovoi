@@ -101,6 +101,7 @@ s3 = boto3_session.resource("s3")
 sts = boto3_session.client("sts")
 sfn = boto3.client("stepfunctions")
 iam = boto3_session.resource("iam")
+logs = boto3_session.client("logs")
 
 trust_statement = copy.deepcopy(chalice.constants.LAMBDA_TRUST_POLICY["Statement"][0])
 trust_statement["Principal"] = {"Service": urlparse(sfn.meta.endpoint_url).netloc}
@@ -133,9 +134,10 @@ else:
 
 domovoi_app = config.chalice_app
 
-# FIXME: permissions should be granular to at least the account, to prevent unauthorized invocation
-for service in ("apigateway.amazonaws.com", "events.amazonaws.com", "sns.amazonaws.com", "s3.amazonaws.com"):
-    policy = dict(FunctionName=lambda_arn, Principal=service, Action="lambda:InvokeFunction")
+# TODO: consider narrowing trust policy
+for service in ("apigateway", "events", "sns", "s3", "logs"):
+    service_uri = service + ".amazonaws.com"
+    policy = dict(FunctionName=lambda_arn, Principal=service_uri, Action="lambda:InvokeFunction")
     policy_id = "domovoi-{}".format(hashlib.md5(json.dumps(policy).encode()).hexdigest()[:8])
     print("Granting {} access to invoke Lambda function {}".format(service, lambda_arn))
     if not args.dry_run:
@@ -194,6 +196,14 @@ for s3_bucket, event_handler in domovoi_app.s3_subscribers.items():
         old_cfgs = [cfg for cfg in new_config["LambdaFunctionConfigurations"] if cfg["LambdaFunctionArn"] != lambda_arn]
         new_config["LambdaFunctionConfigurations"] = [lambda_function_configuration] + old_cfgs
     notification.put(NotificationConfiguration=new_config)
+
+for cwl_log_group_name, cwl_sub_filter_data in domovoi_app.cwl_sub_filters.items():
+    print("Subscribing", cwl_sub_filter_data, "to CloudWatch Logs filter for", cwl_log_group_name)
+    if not args.dry_run:
+        logs.put_subscription_filter(logGroupName=cwl_log_group_name,
+                                     filterName="domovoi-cwl-filter",
+                                     filterPattern=cwl_sub_filter_data["filter_pattern"],
+                                     destinationArn=lambda_arn)
 
 state_machine = None
 for sfn_task_name, sfn_task in domovoi_app.sfn_tasks.items():
