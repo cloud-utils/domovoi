@@ -92,10 +92,10 @@ can be used to trigger Lambda functions. Domovoi supports the following event so
   CloudWatch Events)
 * S3 events
 * AWS Step Functions state machine tasks
-
-TODO:
-
 * CloudWatch Logs filter subscriptions
+
+Possible future event sources to support:
+
 * DynamoDB events
 * SES (email) events
 
