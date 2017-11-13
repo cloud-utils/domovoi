@@ -10,13 +10,24 @@ from domovoi import Domovoi # noqa
 
 class TestDomovoi(unittest.TestCase):
     def test_basic_statements(self):
+        state_machine = {
+            "StartAt": "Worker",
+            "States": {
+                "Worker": {
+                    "Type": "Task",
+                    "Resource": None,
+                    "End": True
+                }
+            }
+        }
+
         subprocess.check_call(["chalice", "new-project", "testproject"])
         readme_filename = os.path.join(os.path.dirname(__file__), "..", "README.rst")
         with open(readme_filename) as readme_fh, open("testproject/app.py", "w") as app_fh:
             for line in readme_fh.readlines():
                 if line.strip() == ".. code-block:: python":
-                    app_fh.write("# Domovoi test\n")
-                elif "state_machine_definition" in line:
+                    app_fh.write("# Domovoi test\nstate_machine = {}\n".format(state_machine))
+                elif line.strip() == "Installation":
                     break
                 elif app_fh.tell():
                     app_fh.write(line[4:])
