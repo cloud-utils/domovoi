@@ -106,6 +106,7 @@ def do_work(event, context):
     return event
 
 
+# Construct the threadpool definition by explicitly mentioning each thread in the state machine definition.
 for t in range(num_threads):
     thread = json.loads(json.dumps(sfn_thread).replace("{t}", str(t)))
     sfn["States"]["Threadpool"]["Branches"].append(thread)
