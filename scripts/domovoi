@@ -236,20 +236,21 @@ if state_machine and not args.dry_run:
         sm = sfn.create_state_machine(**sm_args)
     except sfn.exceptions.StateMachineAlreadyExists as e:
         sm_arn = str(e).split(": ")[-1].strip("'")
-        sfn.delete_state_machine(stateMachineArn=sm_arn)
         sys.stderr.write("Deleting existing state machine {}".format(sm_arn))
         sys.stderr.flush()
-        while True:
+        sfn.delete_state_machine(stateMachineArn=sm_arn)
+        for i in range(90):
             try:
                 sm_desc = sfn.describe_state_machine(stateMachineArn=sm_arn)
-                print(sm_desc)
-                assert sm_desc["status"] == "DELETING"
+                assert sm_desc["status"] in {"ACTIVE", "DELETING"}
                 sys.stderr.write(".")
                 sys.stderr.flush()
                 time.sleep(1)
             except sfn.exceptions.StateMachineDoesNotExist:
                 sys.stderr.write("OK\n")
                 break
+        else:
+            raise Exception("Timed out while waiting for state machine to be deleted")
         sm = sfn.create_state_machine(**sm_args)
     print("State machine:", sm["stateMachineArn"])
 
