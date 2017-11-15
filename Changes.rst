@@ -1,3 +1,8 @@
+Changes for v1.4.1 (2017-11-14)
+===============================
+
+-  Add statement to debug SM deploy loop crash
+
 Changes for v1.4.0 (2017-11-09)
 ===============================
 
