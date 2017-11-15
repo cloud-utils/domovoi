@@ -241,7 +241,9 @@ if state_machine and not args.dry_run:
         sys.stderr.flush()
         while True:
             try:
-                assert sfn.describe_state_machine(stateMachineArn=sm_arn)["status"] == "DELETING"
+                sm_desc = sfn.describe_state_machine(stateMachineArn=sm_arn)
+                print(sm_desc)
+                assert sm_desc["status"] == "DELETING"
                 sys.stderr.write(".")
                 sys.stderr.flush()
                 time.sleep(1)
