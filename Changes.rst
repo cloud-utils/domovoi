@@ -1,3 +1,8 @@
+Changes for v1.4.2 (2017-11-14)
+===============================
+
+Accommodate eventual consistency in SM update loop
+
 Changes for v1.4.1 (2017-11-14)
 ===============================
 
