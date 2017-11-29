@@ -14,7 +14,7 @@ from chalice.compat import urlparse
 from chalice.constants import DEFAULT_STAGE_NAME
 import chalice.awsclient, chalice.deploy.deployer
 
-import boto3.session
+import botocore, boto3.session
 
 import domovoi
 
@@ -234,24 +234,25 @@ if state_machine and not args.dry_run:
                    roleArn=iam_role_arn)
     try:
         sm = sfn.create_state_machine(**sm_args)
-    except sfn.exceptions.StateMachineAlreadyExists as e:
-        sm_arn = str(e).split(": ")[-1].strip("'")
-        sys.stderr.write("Deleting existing state machine {}".format(sm_arn))
-        sys.stderr.flush()
-        sfn.delete_state_machine(stateMachineArn=sm_arn)
-        for i in range(90):
-            try:
-                sm_desc = sfn.describe_state_machine(stateMachineArn=sm_arn)
-                assert sm_desc["status"] in {"ACTIVE", "DELETING"}
-                sys.stderr.write(".")
-                sys.stderr.flush()
-                time.sleep(1)
-            except sfn.exceptions.StateMachineDoesNotExist:
-                sys.stderr.write("OK\n")
-                break
+        print("Created new state machine", sm["stateMachineArn"])
+    except botocore.exceptions.ClientError as e:
+        for page in sfn.get_paginator("list_state_machines").paginate():
+            for sm in page["stateMachines"]:
+                if sm["name"] == function_name:
+                    break
+        if sm["name"] != function_name:
+            raise e
+        sm = sfn.describe_state_machine(stateMachineArn=sm["stateMachineArn"])
+        sm_args.clear()
+        if json.loads(sm["definition"]) != state_machine:
+            sm_args["definition"] = json.dumps(state_machine)
+        if sm["roleArn"] != iam_role_arn:
+            sm_args["roleArn"] = iam_role_arn
+        if sm_args:
+            print("Updating state machine", sm["stateMachineArn"])
+            sfn.update_state_machine(stateMachineArn=sm["stateMachineArn"], **sm_args)
         else:
-            raise Exception("Timed out while waiting for state machine to be deleted")
-        sm = sfn.create_state_machine(**sm_args)
+            print("Using existing state machine", sm["stateMachineArn"])
     print("State machine:", sm["stateMachineArn"])
 
 if args.dry_run:

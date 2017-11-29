@@ -13,7 +13,7 @@ setup(
     description='AWS Lambda event handler manager',
     long_description=open('README.rst').read(),
     install_requires=[
-        'boto3 >= 1.4.4, < 2',
+        'boto3 >= 1.4.8, < 2',
         'chalice >= 0.8.2, < 1'
     ],
     extras_require={
