@@ -1,3 +1,8 @@
+Changes for v1.4.3 (2017-11-29)
+===============================
+
+-  Improve SM updates: use update\_state\_machine
+
 Changes for v1.4.2 (2017-11-14)
 ===============================
 
