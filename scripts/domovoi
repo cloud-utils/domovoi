@@ -185,17 +185,28 @@ for s3_bucket, event_handler in domovoi_app.s3_subscribers.items():
     else:
         lambda_function_configuration = dict(LambdaFunctionArn=lambda_arn, Events=event_handler["events"])
         lambda_function_configuration = add_filter_config(lambda_function_configuration, event_handler)
-    notification = s3.Bucket(s3_bucket).Notification()
-    new_config = dict(LambdaFunctionConfigurations=notification.lambda_function_configurations or [],
-                      QueueConfigurations=notification.queue_configurations or [],
-                      TopicConfigurations=notification.topic_configurations or [])
-    if event_handler["use_sns"]:
-        old_cfgs = [cfg for cfg in new_config["TopicConfigurations"] if cfg["TopicArn"] != sns_topic.arn]
-        new_config["TopicConfigurations"] = [topic_configuration] + old_cfgs
+    for t in range(8):
+        try:
+            notification, last_exception = s3.Bucket(s3_bucket).Notification(), None
+            new_config = dict(LambdaFunctionConfigurations=notification.lambda_function_configurations or [],
+                              QueueConfigurations=notification.queue_configurations or [],
+                              TopicConfigurations=notification.topic_configurations or [])
+            if event_handler["use_sns"]:
+                old_cfgs = [cfg for cfg in new_config["TopicConfigurations"] if cfg["TopicArn"] != sns_topic.arn]
+                new_config["TopicConfigurations"] = [topic_configuration] + old_cfgs
+            else:
+                old_cfgs = [cfg for cfg in new_config["LambdaFunctionConfigurations"] if cfg["LambdaFunctionArn"] != lambda_arn]
+                new_config["LambdaFunctionConfigurations"] = [lambda_function_configuration] + old_cfgs
+            notification.put(NotificationConfiguration=new_config)
+            break
+        except botocore.exceptions.ClientError as e:
+            if "A conflicting conditional operation is currently in progress" not in str(e):
+                raise
+            last_exception = e
+            print("Waiting", int(1.6**t), "seconds for concurrent operation to complete")
+            time.sleep(1.6**t)
     else:
-        old_cfgs = [cfg for cfg in new_config["LambdaFunctionConfigurations"] if cfg["LambdaFunctionArn"] != lambda_arn]
-        new_config["LambdaFunctionConfigurations"] = [lambda_function_configuration] + old_cfgs
-    notification.put(NotificationConfiguration=new_config)
+        raise last_exception
 
 for cwl_log_group_name, cwl_sub_filter_data in domovoi_app.cwl_sub_filters.items():
     print("Subscribing", cwl_sub_filter_data, "to CloudWatch Logs filter for", cwl_log_group_name)
@@ -252,7 +263,7 @@ if state_machine and not args.dry_run:
             print("Updating state machine", sm["stateMachineArn"])
             sfn.update_state_machine(stateMachineArn=sm["stateMachineArn"], **sm_args)
         else:
-            print("Using existing state machine", sm["stateMachineArn"])
+            print("No changes required to existing state machine", sm["stateMachineArn"])
     print("State machine:", sm["stateMachineArn"])
 
 if args.dry_run:
