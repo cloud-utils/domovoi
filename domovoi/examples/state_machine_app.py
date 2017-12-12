@@ -22,6 +22,7 @@ sfn = {
         $ aws stepfunctions get-execution-history --execution-arn EXECUTION_ARN,
     where EXECUTION_ARN is displayed in the result of `aws stepfunctions start-execution`.
     State machine input is passed directly in the `event` argument to the task handlers. There is a 32KB I/O size limit.
+    The name of the task state that the handler was called from is available via `context.stepfunctions_task_name`.
     """,
     "StartAt": "Worker",
     "States": {

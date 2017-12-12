@@ -3,7 +3,7 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import os, sys, unittest, tempfile, json, subprocess, shutil
+import os, sys, unittest, tempfile, json, subprocess, shutil, textwrap
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from domovoi import Domovoi # noqa
@@ -34,11 +34,39 @@ class TestDomovoi(unittest.TestCase):
 
         subprocess.check_call(["domovoi", "--dry-run", "deploy"], cwd="testproject")
 
-    def test_state_machine(self):
+    def test_state_machine_examples(self):
         subprocess.check_call(["chalice", "new-project", "sfn"])
         shutil.copy(os.path.join(os.path.dirname(__file__), "..", "domovoi", "examples", "state_machine_app.py"),
                     os.path.join("sfn", "app.py"))
         subprocess.check_call(["domovoi", "--dry-run", "deploy"], cwd="sfn")
+
+    def test_state_machine_registration(self):
+        sm_app = """
+        import json, boto3, domovoi
+
+        app = domovoi.Domovoi()
+
+        def handler(event, context):
+            pass
+
+        state_machine = {
+            "StartAt": "Worker",
+            "States": {
+                "Worker": {
+                    "Type": "Task",
+                    "Resource": handler,
+                    "End": True
+                }
+            }
+        }
+        app.register_state_machine(state_machine)
+        """
+
+        subprocess.check_call(["chalice", "new-project", "testproject2"])
+        with open("testproject2/app.py", "w") as app_fh:
+            app_fh.write(textwrap.dedent(sm_app))
+
+        subprocess.check_call(["domovoi", "--dry-run", "deploy"], cwd="testproject2")
 
 
 if __name__ == '__main__':

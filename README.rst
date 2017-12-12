@@ -58,7 +58,7 @@ custom `state machine <https://aws.amazon.com/step-functions/>`_ transition:
     # See the "AWS Step Functions state machines" section below for a complete example of setting up a state machine.
     @app.step_function_task(state_name="Worker", state_machine_definition=state_machine)
     def worker(event, context):
-        return {"result": event["input"] + 1}
+        return {"result": event["input"] + 1, "my_state": context.stepfunctions_task_name}
 
 Installation
 ------------

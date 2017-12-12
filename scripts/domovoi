@@ -74,13 +74,6 @@ def add_filter_config(event_config, event_handler):
             cfg["Filter"]["Key"]["FilterRules"].append(dict(Name=fltr, Value=event_handler[fltr]))
     return cfg
 
-def get_all_states(state_machine):
-    states = dict(state_machine["States"])
-    for state_name, state_data in state_machine["States"].items():
-        for sub_sm in state_data.get("Branches", []):
-            states.update(get_all_states(sub_sm))
-    return states
-
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument("--stage", default=DEFAULT_STAGE_NAME)
@@ -229,7 +222,7 @@ for sfn_task_name, sfn_task in domovoi_app.sfn_tasks.items():
                       Name=lambda_alias,
                       FunctionVersion="$LATEST",
                       Description="Domovoi Lambda routing label for a Step Functions state machine task")
-    all_states = get_all_states(state_machine)
+    all_states = domovoi.Domovoi.get_all_states(state_machine)
     state = all_states[sfn_task["state_name"]]
     if not args.dry_run:
         try:

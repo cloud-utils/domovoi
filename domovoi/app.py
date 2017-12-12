@@ -72,6 +72,18 @@ class Domovoi(Chalice):
             return func
         return register_sfn_task
 
+    def register_state_machine(self, state_machine_definition):
+        for state_name, state_data in self.get_all_states(state_machine_definition).items():
+            self.step_function_task(state_name, state_machine_definition)(state_data["Resource"])
+
+    @classmethod
+    def get_all_states(cls, state_machine):
+        states = dict(state_machine["States"])
+        for state_name, state_data in state_machine["States"].items():
+            for sub_sm in state_data.get("Branches", []):
+                states.update(cls.get_all_states(sub_sm))
+        return states
+
     def _find_sns_s3_event_sub(self, sns_s3_event):
         assert sns_s3_event['Records'][0]["Sns"]['Subject'] == 'Amazon S3 Notification'
         s3_event = json.loads(sns_s3_event['Records'][0]["Sns"]["Message"])
@@ -107,6 +119,7 @@ class Domovoi(Chalice):
             _, lambda_name, lambda_alias = invoked_function_arn.resource.split(":")
             assert lambda_alias.startswith("domovoi-stepfunctions-task-")
             task_name = lambda_alias[len("domovoi-stepfunctions-task-"):]
+            context.stepfunctions_task_name = task_name
             handler = self.sfn_tasks[task_name]["func"]
         else:
             raise DomovoiException("No handler found for event {}".format(event))
