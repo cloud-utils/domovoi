@@ -74,7 +74,8 @@ class Domovoi(Chalice):
 
     def register_state_machine(self, state_machine_definition):
         for state_name, state_data in self.get_all_states(state_machine_definition).items():
-            self.step_function_task(state_name, state_machine_definition)(state_data["Resource"])
+            if callable(state_data.get("Resource", None)):
+                self.step_function_task(state_name, state_machine_definition)(state_data["Resource"])
 
     @classmethod
     def get_all_states(cls, state_machine):
