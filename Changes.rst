@@ -1,3 +1,9 @@
+Changes for v1.4.5 (2017-12-12)
+===============================
+
+-  Only call step\_function\_task if the state has a Resource field
+   that's callable
+
 Changes for v1.4.4 (2017-12-11)
 ===============================
 
