@@ -1,3 +1,10 @@
+Changes for v1.4.4 (2017-12-11)
+===============================
+
+-  Allow state machine registration; pass state name in context
+
+-  Deconflict concurrent S3 notification config operations
+
 Changes for v1.4.3 (2017-11-29)
 ===============================
 
