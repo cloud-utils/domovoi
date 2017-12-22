@@ -5,11 +5,10 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import os, sys, argparse, inspect, json, hashlib, time, copy
 
 import chalice, chalice.app, chalice.deploy.packager
-from chalice import __version__ as chalice_version
 from chalice.cli.factory import create_botocore_session, CLIFactory
 from chalice.deploy.packager import LambdaDeploymentPackager
 from chalice.deploy.deployer import APIGatewayDeployer
-from chalice.utils import record_deployed_values
+from chalice.utils import record_deployed_values, UI
 from chalice.compat import urlparse
 from chalice.constants import DEFAULT_STAGE_NAME
 import chalice.awsclient, chalice.deploy.deployer
@@ -102,8 +101,7 @@ chalice.constants.LAMBDA_TRUST_POLICY["Statement"].append(trust_statement)
 
 factory = CLIFactory(args.project_dir)
 config = factory.create_config_obj(chalice_stage_name=args.stage, autogen_policy=False)
-factory_args = {"ui": None} if chalice_version >= "1.0" else {"prompter": None}
-deployer = factory.create_default_deployer(session=botocore_session, **factory_args)
+deployer = factory.create_default_deployer(session=botocore_session, ui=UI(confirm=lambda *args, **kwargs: True))
 deployer._lambda_deploy._packager.__class__ = DomovoiDeploymentPackager
 deployer._apigateway_deploy.__class__ = NoOpDeployer
 function_name = '%s-%s' % (config.app_name, args.stage)
