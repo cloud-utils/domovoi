@@ -41,7 +41,7 @@ custom `state machine <https://aws.amazon.com/step-functions/>`_ transition:
         context.log("Got an event from S3: {}".format(message))
 
     # Set use_sns=False to subscribe your Lambda directly to S3 events without forwrading them through an SNS topic.
-    # This has fewer moving parts, but you can only subscribe one Lambda function to events in a given S3 bucket.
+    # That approach has fewer moving parts, but you can only subscribe one Lambda function to events in a given S3 bucket.
     @app.s3_event_handler(bucket="myS3bucket", events=["s3:ObjectCreated:*"], prefix="foo", suffix=".bar", use_sns=False)
     def monitor_s3(event, context):
         message = json.loads(event["Records"][0]["Sns"]["Message"])
@@ -125,7 +125,7 @@ the file ``.chalice/config.json`` to the target DLQ ARN. For example::
   {
     "app_name": "my_app",
     ...
-    "dead_letter_queue_target_arn": "arn:aws:sns:us-east-1:123456789012:it-ded"
+    "dead_letter_queue_target_arn": "arn:aws:sns:us-east-1:123456789012:my-dlq"
   }
 
 You may need to update your Lambda IAM policy (``.chalice/policy.json``) to give your Lambda access to SNS or SQS.
