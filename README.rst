@@ -1,7 +1,7 @@
 Domovoi: AWS Lambda event handler manager
 =========================================
 
-*Domovoi* is an extension to `AWS Labs Chalice <https://github.com/awslabs/chalice>`_ to handle `AWS Lambda
+*Domovoi* is an extension to `AWS Chalice <https://github.com/awslabs/chalice>`_ to handle `AWS Lambda
 <https://aws.amazon.com/lambda/>`_ `event sources
 <http://docs.aws.amazon.com/lambda/latest/dg/invoking-lambda-function.html#intro-core-components-event-sources>`_ other
 than HTTP requests through API Gateway. Domovoi lets you easily configure and deploy a Lambda function to run on a
@@ -47,6 +47,12 @@ custom `state machine <https://aws.amazon.com/step-functions/>`_ transition:
         message = json.loads(event["Records"][0]["Sns"]["Message"])
         context.log("Got an event from S3: {}".format(message))
 
+    # DynamoDB event format: https://docs.aws.amazon.com/lambda/latest/dg/eventsources.html#eventsources-ddb-update
+    @app.dynamodb_stream_handler(table_name="MyDynamoTable", batch_size=200)
+    def handle_dynamodb_stream(event, context):
+        context.log("Got {} events from DynamoDB".format(len(event["Records"])))
+        context.log("First event: {}".format(event["Records"][0]["dynamodb"]))
+
     # Use the following command to log a CloudWatch Logs message that will trigger this handler:
     # python -c'import watchtower as w, logging as l; L=l.getLogger(); L.addHandler(w.CloudWatchLogHandler()); L.error(dict(x=8))'
     # See http://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/FilterAndPatternSyntax.html for the filter pattern syntax
@@ -83,20 +89,21 @@ with your function executing in ``/var/task/app.py`` with ``/var/task`` as the w
 
 Supported event types
 ~~~~~~~~~~~~~~~~~~~~~
-See http://docs.aws.amazon.com/lambda/latest/dg/invoking-lambda-function.html for an overview of event sources that
-can be used to trigger Lambda functions. Domovoi supports the following event sources:
+See `Supported Event Sources <http://docs.aws.amazon.com/lambda/latest/dg/invoking-lambda-function.html>`_ for an
+overview of event sources that can be used to trigger Lambda functions. Domovoi supports the following event sources:
 
-* SNS subscriptions
+* `SNS subscriptions <https://docs.aws.amazon.com/lambda/latest/dg/eventsources.html#eventsources-sns>`_
 * CloudWatch Events rule targets, including CloudWatch Scheduled Events (see
-  http://docs.aws.amazon.com/AmazonCloudWatch/latest/events/EventTypes.html for a list of event types supported by
-  CloudWatch Events)
-* S3 events
+  `CloudWatch Events Event Examples <http://docs.aws.amazon.com/AmazonCloudWatch/latest/events/EventTypes.html>`_ for a
+  list of event types supported by CloudWatch Events)
+* `S3 events <https://docs.aws.amazon.com/lambda/latest/dg/eventsources.html#eventsources-s3-put>`_
 * AWS Step Functions state machine tasks
-* CloudWatch Logs filter subscriptions
+* `CloudWatch Logs filter subscriptions <https://docs.aws.amazon.com/lambda/latest/dg/eventsources.html#eventsources-cloudwatch-logs>`_
+* `DynamoDB stream events <https://docs.aws.amazon.com/lambda/latest/dg/eventsources.html#eventsources-ddb-update>`_
 
 Possible future event sources to support:
 
-* DynamoDB events
+* Kinesis stream events
 * SES (email) events
 
 AWS Step Functions state machines

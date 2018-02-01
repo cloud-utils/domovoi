@@ -94,6 +94,7 @@ sts = boto3_session.client("sts")
 sfn = boto3.client("stepfunctions")
 iam = boto3_session.resource("iam")
 logs = boto3_session.client("logs")
+dynamodb = boto3_session.resource("dynamodb")
 
 trust_statement = copy.deepcopy(chalice.constants.LAMBDA_TRUST_POLICY["Statement"][0])
 trust_statement["Principal"] = {"Service": urlparse(sfn.meta.endpoint_url).netloc}
@@ -138,7 +139,7 @@ for service in ("apigateway", "events", "sns", "s3", "logs"):
             print("Found existing permission grant statement {}, skipping".format(policy_id))
 
 for task_name, task in domovoi_app.cloudwatch_events_rules.items():
-    print("Scheduling", task_name, "to run on schedule ", task["schedule_expression"], "pattern", task["event_pattern"])
+    print("Scheduling", task_name, "to run on schedule", task["schedule_expression"], "pattern", task["event_pattern"])
     rule_args = dict(Name=task_name)
     if task.get("schedule_expression"):
         rule_args["ScheduleExpression"] = task["schedule_expression"]
@@ -206,6 +207,22 @@ for cwl_log_group_name, cwl_sub_filter_data in domovoi_app.cwl_sub_filters.items
                                      filterName="domovoi-cwl-filter",
                                      filterPattern=cwl_sub_filter_data["filter_pattern"],
                                      destinationArn=lambda_arn)
+
+for table_name, source_data in domovoi_app.dynamodb_event_sources.items():
+    print("Subscribing to DynamoDB event stream for table", table_name)
+    if not args.dry_run:
+        event_source_mapping_args = dict(EventSourceArn=dynamodb.Table(table_name).latest_stream_arn,
+                                         FunctionName=function_name,
+                                         Enabled=True,
+                                         StartingPosition="TRIM_HORIZON")
+        if source_data["batch_size"] is not None:
+            event_source_mapping_args.update(BatchSize=source_data["batch_size"])
+        try:
+            awslambda.create_event_source_mapping(**event_source_mapping_args)
+        except awslambda.exceptions.ResourceConflictException as e:
+            assert "provided mapping already exists" in str(e) and str(e).split()[-2] == "UUID"
+            if source_data["batch_size"] is not None:
+                awslambda.update_event_source_mapping(UUID=str(e).split()[-1], BatchSize=source_data["batch_size"])
 
 state_machine = None
 for sfn_task_name, sfn_task in domovoi_app.sfn_tasks.items():

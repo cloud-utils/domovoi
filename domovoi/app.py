@@ -18,6 +18,7 @@ class Domovoi(Chalice):
     s3_subscribers = {}
     sfn_tasks = {}
     cwl_sub_filters = {}
+    dynamodb_event_sources = {}
     def __init__(self, app_name="Domovoi", configure_logs=True):
         Chalice.__init__(self, app_name=app_name, configure_logs=configure_logs)
 
@@ -30,7 +31,12 @@ class Domovoi(Chalice):
             return func
         return register_sns_subscriber
 
-    def dynamodb_event_handler(self):
+    def dynamodb_stream_handler(self, table_name, batch_size=None):
+        def register_dynamodb_event_source(func):
+            self.dynamodb_event_sources[table_name] = dict(batch_size=batch_size, func=func)
+        return register_dynamodb_event_source
+
+    def kinesis_stream_handler(self, **kwargs):
         raise NotImplementedError()
 
     def email_receipt_handler(self):
