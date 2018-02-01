@@ -1,3 +1,10 @@
+Changes for v1.5.0 (2018-02-01)
+===============================
+
+-  Add DynamoDB streams support
+
+-  Bypass prompt when writing IAM policy for the first time
+
 Changes for v1.4.5 (2017-12-12)
 ===============================
 
