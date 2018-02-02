@@ -1,3 +1,8 @@
+Changes for v1.5.1 (2018-02-01)
+===============================
+
+-  Fix routing of domovoi dynamodb handlers
+
 Changes for v1.5.0 (2018-02-01)
 ===============================
 
