@@ -119,6 +119,10 @@ class Domovoi(Chalice):
                 if sns_topic not in self.sns_subscribers:
                     raise DomovoiException("Received SNS or S3-SNS event with no known handler")
                 handler = self.sns_subscribers[sns_topic]
+        elif "Records" in event and "dynamodb" in event["Records"][0]:
+            event_source_arn = ARN(event["Records"][0]["eventSourceARN"])
+            table_name = event_source_arn.resource.split("/")[1]
+            handler = self.dynamodb_event_sources[table_name]["func"]
         elif "awslogs" in event:
             event = json.loads(gzip.decompress(base64.b64decode(event["awslogs"]["data"])))
             handler = self.cwl_sub_filters[event["logGroup"]]["func"]
