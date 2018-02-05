@@ -1,3 +1,9 @@
+Changes for v1.5.2 (2018-02-05)
+===============================
+
+-  Ensure SNS topic names can represent all DNS-compliant S3 bucket
+   names. Fixes #5
+
 Changes for v1.5.1 (2018-02-01)
 ===============================
 
