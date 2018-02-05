@@ -164,7 +164,7 @@ for s3_bucket, event_handler in domovoi_app.s3_subscribers.items():
     if args.dry_run:
         continue
     if event_handler["use_sns"]:
-        sns_topic = sns.create_topic(Name="domovoi-s3-bucket-events-{}".format(s3_bucket))
+        sns_topic = sns.create_topic(Name="domovoi-s3-bucket-events-{}".format(s3_bucket.replace(".", "_")))
         policy = {"Statement": [{"Action": ["SNS:Publish"],
                                  "Effect": "Allow",
                                  "Resource": sns_topic.arn,
