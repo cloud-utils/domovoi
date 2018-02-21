@@ -224,6 +224,11 @@ for table_name, source_data in domovoi_app.dynamodb_event_sources.items():
             if source_data["batch_size"] is not None:
                 awslambda.update_event_source_mapping(UUID=str(e).split()[-1], BatchSize=source_data["batch_size"])
 
+existing_aliases = []
+if not args.dry_run:
+    for page in awslambda.get_paginator('list_aliases').paginate(FunctionName=function_name):
+        existing_aliases.extend(page["Aliases"])
+
 state_machine = None
 for sfn_task_name, sfn_task in domovoi_app.sfn_tasks.items():
     print("Registering step function state machine for", sfn_task_name)
@@ -240,10 +245,14 @@ for sfn_task_name, sfn_task in domovoi_app.sfn_tasks.items():
     all_states = domovoi.Domovoi.get_all_states(state_machine)
     state = all_states[sfn_task["state_name"]]
     if not args.dry_run:
-        try:
-            awslambda.create_alias(**alias_args)
-        except awslambda.exceptions.ResourceConflictException:
-            awslambda.update_alias(**alias_args)
+        for alias in existing_aliases:
+            if alias["Name"] == lambda_alias and alias["FunctionVersion"] == "$LATEST":
+                break
+        else:
+            try:
+                awslambda.create_alias(**alias_args)
+            except awslambda.exceptions.ResourceConflictException:
+                awslambda.update_alias(**alias_args)
         state["Resource"] = lambda_arn + ":" + lambda_alias
 
 if state_machine and not args.dry_run:
