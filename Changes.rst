@@ -1,3 +1,8 @@
+Changes for v1.5.3 (2018-02-21)
+===============================
+
+-  Avoid triggering Lambda API rate limits when managing state aliases
+
 Changes for v1.5.2 (2018-02-05)
 ===============================
 
