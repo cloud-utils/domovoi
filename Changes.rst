@@ -1,3 +1,8 @@
+Changes for v1.5.4 (2018-03-03)
+===============================
+
+-  Skip updating event source mapping when diff is null
+
 Changes for v1.5.3 (2018-02-21)
 ===============================
 
