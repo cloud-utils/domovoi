@@ -222,7 +222,10 @@ for table_name, source_data in domovoi_app.dynamodb_event_sources.items():
         except awslambda.exceptions.ResourceConflictException as e:
             assert "provided mapping already exists" in str(e) and str(e).split()[-2] == "UUID"
             if source_data["batch_size"] is not None:
-                awslambda.update_event_source_mapping(UUID=str(e).split()[-1], BatchSize=source_data["batch_size"])
+                esm_uuid = str(e).split()[-1]
+                esm = awslambda.get_event_source_mapping(UUID=esm_uuid)
+                if source_data["batch_size"] != esm["BatchSize"]:
+                    awslambda.update_event_source_mapping(UUID=esm_uuid, BatchSize=source_data["batch_size"])
 
 existing_aliases = []
 if not args.dry_run:
