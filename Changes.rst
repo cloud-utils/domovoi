@@ -1,3 +1,8 @@
+Changes for v1.5.5 (2018-03-16)
+===============================
+
+-  Add support for new-project and update docs
+
 Changes for v1.5.4 (2018-03-03)
 ===============================
 
