@@ -21,7 +21,7 @@ class TestDomovoi(unittest.TestCase):
             }
         }
 
-        subprocess.check_call(["chalice", "new-project", "testproject"])
+        subprocess.check_call(["domovoi", "new-project", "testproject"])
         readme_filename = os.path.join(os.path.dirname(__file__), "..", "README.rst")
         with open(readme_filename) as readme_fh, open("testproject/app.py", "w") as app_fh:
             for line in readme_fh.readlines():
@@ -35,7 +35,7 @@ class TestDomovoi(unittest.TestCase):
         subprocess.check_call(["domovoi", "--dry-run", "deploy"], cwd="testproject")
 
     def test_state_machine_examples(self):
-        subprocess.check_call(["chalice", "new-project", "sfn"])
+        subprocess.check_call(["domovoi", "new-project", "sfn"])
         shutil.copy(os.path.join(os.path.dirname(__file__), "..", "domovoi", "examples", "state_machine_app.py"),
                     os.path.join("sfn", "app.py"))
         subprocess.check_call(["domovoi", "--dry-run", "deploy"], cwd="sfn")
@@ -62,7 +62,7 @@ class TestDomovoi(unittest.TestCase):
         app.register_state_machine(state_machine)
         """
 
-        subprocess.check_call(["chalice", "new-project", "testproject2"])
+        subprocess.check_call(["domovoi", "new-project", "testproject2"])
         with open("testproject2/app.py", "w") as app_fh:
             app_fh.write(textwrap.dedent(sm_app))
 
