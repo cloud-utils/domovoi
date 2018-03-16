@@ -76,9 +76,12 @@ Usage
 -----
 First-time setup::
 
-    chalice new-project
+    domovoi new-project
 
-Replace the Chalice app entry point (in ``app.py``) with the Domovoi app entry point as above, then deploy the event handlers::
+* Edit the Domovoi app entry point in ``app.py`` using examples above.
+* Edit the IAM policy for your Lambda function in ``my_project/.chalice/policy-dev.json`` to add any permissions it
+  needs.
+* Deploy the event handlers::
 
     domovoi deploy
 
@@ -120,7 +123,7 @@ divides work between multiple Lambdas.
 
 When creating a Step Functions State Machine driven Domovoi daemon Lambda, the State Machine assumes the same IAM role as
 the Lambda itself. To allow the State Machine to invoke the Lambda, edit the IAM policy (under your app directory, in
-`.chalice/policy.json`) to include a statement allowing the "lambda:InvokeFunction" action on all resources, or on the
+`.chalice/policy-dev.json`) to include a statement allowing the "lambda:InvokeFunction" action on all resources, or on the
 ARN of the Lambda itself.
 
 Configuration: Dead Letter Queues
@@ -135,7 +138,7 @@ the file ``.chalice/config.json`` to the target DLQ ARN. For example::
     "dead_letter_queue_target_arn": "arn:aws:sns:us-east-1:123456789012:my-dlq"
   }
 
-You may need to update your Lambda IAM policy (``.chalice/policy.json``) to give your Lambda access to SNS or SQS.
+You may need to update your Lambda IAM policy (``.chalice/policy-dev.json``) to give your Lambda access to SNS or SQS.
 
 Links
 -----

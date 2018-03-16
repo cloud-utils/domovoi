@@ -8,9 +8,9 @@ import chalice, chalice.app, chalice.deploy.packager
 from chalice.cli.factory import create_botocore_session, CLIFactory
 from chalice.deploy.packager import LambdaDeploymentPackager
 from chalice.deploy.deployer import APIGatewayDeployer
-from chalice.utils import record_deployed_values, UI
+from chalice.utils import record_deployed_values, UI, getting_started_prompt
 from chalice.compat import urlparse
-from chalice.constants import DEFAULT_STAGE_NAME
+from chalice.constants import DEFAULT_STAGE_NAME, CLOUDWATCH_LOGS
 import chalice.awsclient, chalice.deploy.deployer
 
 import botocore, boto3.session
@@ -79,9 +79,36 @@ parser.add_argument("--stage", default=DEFAULT_STAGE_NAME)
 parser.add_argument("--profile")
 parser.add_argument("--debug", action="store_true")
 parser.add_argument("--dry-run", action="store_true")
-parser.add_argument("action", choices={"deploy"})
+parser.add_argument("action", choices={"deploy", "new-project"})
 parser.add_argument("project_dir", nargs="?", default=os.getcwd())
 args = parser.parse_args()
+
+example_app = """# This is an example entry point for an app built with Domovoi, an AWS Lambda event handler manager.
+# See https://github.com/kislyuk/domovoi for Domovoi's documentation.
+
+import json, boto3, domovoi
+
+app = domovoi.Domovoi()
+
+@app.scheduled_function("rate(1 minute)")
+def test(event, context):
+    pass
+"""
+
+if args.action == "new-project":
+    from chalice.cli import click, create_new_project_skeleton
+    from chalice.policy import PolicyBuilder
+    if args.project_dir == os.getcwd():
+        args.project_dir = click.prompt("New Domovoi project name")
+    assert not os.path.isdir(args.project_dir)
+    create_new_project_skeleton(args.project_dir, profile=None)
+    with open(os.path.join(args.project_dir, "app.py"), "w") as fh:
+        fh.write(example_app)
+    policy = PolicyBuilder().build_policy_from_api_calls([])
+    policy["Statement"].append(CLOUDWATCH_LOGS)
+    with open(os.path.join(args.project_dir, ".chalice", "policy-{}.json".format(DEFAULT_STAGE_NAME)), "w") as fh:
+        json.dump(policy, fh, indent=2)
+    parser.exit(status=0, message="New Domovoi project created in {}\n".format(args.project_dir))
 
 botocore_session = create_botocore_session(profile=args.profile, debug=args.debug)
 botocore_session.user_agent_extra = "domovoi/%s" % __version__
