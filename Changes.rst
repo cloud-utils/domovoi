@@ -1,3 +1,8 @@
+Changes for v1.5.6 (2018-04-09)
+===============================
+
+-  Allow configurable concurrency reservation
+
 Changes for v1.5.5 (2018-03-16)
 ===============================
 
