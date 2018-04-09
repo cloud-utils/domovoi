@@ -14,7 +14,7 @@ setup(
     long_description=open('README.rst').read(),
     install_requires=[
         'boto3 >= 1.4.8, < 2',
-        'chalice >= 1.1.0, < 2'
+        'chalice >= 1.1.1, < 1.2.0'
     ],
     extras_require={
         ':python_version == "2.7"': ['enum34 >= 1.1.6, < 2']
