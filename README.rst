@@ -126,8 +126,11 @@ the Lambda itself. To allow the State Machine to invoke the Lambda, edit the IAM
 `.chalice/policy-dev.json`) to include a statement allowing the "lambda:InvokeFunction" action on all resources, or on the
 ARN of the Lambda itself.
 
-Configuration: Dead Letter Queues
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Configuration
+~~~~~~~~~~~~~
+
+Dead Letter Queues
+^^^^^^^^^^^^^^^^^^
 To enable your Lambda function to forward failed invocation notifications to `dead letter queuees
 <http://docs.aws.amazon.com/lambda/latest/dg/dlq.html>`_, set the configuration key ``dead_letter_queue_target_arn`` in
 the file ``.chalice/config.json`` to the target DLQ ARN. For example::
@@ -139,6 +142,21 @@ the file ``.chalice/config.json`` to the target DLQ ARN. For example::
   }
 
 You may need to update your Lambda IAM policy (``.chalice/policy-dev.json``) to give your Lambda access to SNS or SQS.
+
+Concurrency Reservations
+^^^^^^^^^^^^^^^^^^^^^^^^
+For high volume Lambda invocations in accounts with multiple Lambdas, you may need to set `per-function concurrency
+limits <https://docs.aws.amazon.com/lambda/latest/dg/concurrent-executions.html>`_ to partition the overall concurrency
+quota and prevent one set of Lambdas from overloading another. In Domovoi, you can do so by setting the configuration
+key ``reserved_concurrent_executions`` in the file ``.chalice/config.json`` to the desired concurrency reservation. For
+example::
+
+  {
+    "app_name": "my_app",
+    ...
+    "reserved_concurrent_executions": 500
+  }
+
 
 Links
 -----
