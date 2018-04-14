@@ -123,7 +123,7 @@ divides work between multiple Lambdas.
 
 When creating a Step Functions State Machine driven Domovoi daemon Lambda, the State Machine assumes the same IAM role as
 the Lambda itself. To allow the State Machine to invoke the Lambda, edit the IAM policy (under your app directory, in
-`.chalice/policy-dev.json`) to include a statement allowing the "lambda:InvokeFunction" action on all resources, or on the
+``.chalice/policy-dev.json``) to include a statement allowing the "lambda:InvokeFunction" action on all resources, or on the
 ARN of the Lambda itself.
 
 Configuration
