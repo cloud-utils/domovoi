@@ -101,6 +101,7 @@ class Domovoi(Chalice):
     def __call__(self, event, context):
         context.log("Domovoi dispatch of event {}".format(event))
         invoked_function_arn = ARN(context.invoked_function_arn)
+        handler = None
         if "task_name" in event:
             if event["task_name"] not in self.cloudwatch_events_rules:
                 raise DomovoiException("Received CloudWatch event for a task with no known handler")
@@ -132,7 +133,8 @@ class Domovoi(Chalice):
             task_name = lambda_alias[len("domovoi-stepfunctions-task-"):]
             context.stepfunctions_task_name = task_name
             handler = self.sfn_tasks[task_name]["func"]
-        else:
+
+        if handler is None:
             raise DomovoiException("No handler found for event {}".format(event))
         result = handler(event, context)
         context.log(result)
