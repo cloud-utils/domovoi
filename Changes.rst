@@ -1,3 +1,8 @@
+Changes for v1.5.7 (2018-05-03)
+===============================
+
+-  Ensure domovoi errors when there is no handler
+
 Changes for v1.5.6 (2018-04-09)
 ===============================
 
