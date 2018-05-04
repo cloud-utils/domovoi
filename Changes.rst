@@ -1,3 +1,8 @@
+Changes for v1.5.8 (2018-05-04)
+===============================
+
+-  Allow customizable rule name for @scheduled_function (fixes #9)
+
 Changes for v1.5.7 (2018-05-03)
 ===============================
 
