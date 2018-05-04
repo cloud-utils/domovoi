@@ -22,8 +22,8 @@ class Domovoi(Chalice):
     def __init__(self, app_name="Domovoi", configure_logs=True):
         Chalice.__init__(self, app_name=app_name, configure_logs=configure_logs)
 
-    def scheduled_function(self, schedule):
-        return self.cloudwatch_rule(schedule_expression=schedule, event_pattern=None)
+    def scheduled_function(self, schedule, rule_name=None):
+        return self.cloudwatch_rule(schedule_expression=schedule, event_pattern=None, rule_name=rule_name)
 
     def sns_topic_subscriber(self, topic_name):
         def register_sns_subscriber(func):
@@ -59,12 +59,13 @@ class Domovoi(Chalice):
             return func
         return register_s3_subscriber
 
-    def cloudwatch_rule(self, schedule_expression, event_pattern):
+    def cloudwatch_rule(self, schedule_expression, event_pattern, rule_name=None):
         def register_rule(func):
-            if func.__name__ in self.cloudwatch_events_rules:
+            _rule_name = rule_name or func.__name__
+            if _rule_name in self.cloudwatch_events_rules:
                 raise KeyError(func.__name__)
             rule = dict(schedule_expression=schedule_expression, event_pattern=event_pattern, func=func)
-            self.cloudwatch_events_rules[func.__name__] = rule
+            self.cloudwatch_events_rules[_rule_name] = rule
             return func
         return register_rule
 
