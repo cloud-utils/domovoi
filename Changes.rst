@@ -1,3 +1,12 @@
+Changes for v1.6.0 (2018-06-05)
+===============================
+
+-  Domovoi is now compatible with Chalice 1.2+. This should be a
+   backwards compatible change. However, Chalice underwent a complete
+   deployment system rewrite in version 1.2, so deployment state or
+   other aspects of your app’s deployment may be affected. You may need
+   to clear the deployment state of your app.
+
 Changes for v1.5.8 (2018-05-04)
 ===============================
 
