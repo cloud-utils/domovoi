@@ -4,10 +4,11 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import os, sys, argparse, inspect, json, hashlib, time, copy
 
-import chalice, chalice.app, chalice.deploy.packager
+import chalice, chalice.app, chalice.deploy.packager, chalice.deploy.deployer, chalice.package
 from chalice.cli.factory import create_botocore_session, CLIFactory
 from chalice.deploy.packager import LambdaDeploymentPackager
-from chalice.deploy.deployer import APIGatewayDeployer
+from chalice.deploy.deployer import create_default_deployer, ApplicationGraphBuilder
+
 from chalice.utils import record_deployed_values, UI, getting_started_prompt
 from chalice.compat import urlparse
 from chalice.constants import DEFAULT_STAGE_NAME, CLOUDWATCH_LOGS
@@ -49,21 +50,17 @@ class DomovoiDeploymentPackager(LambdaDeploymentPackager):
         zip.write(os.path.join(project_dir, "app.py"), "app.py")
         self._add_chalice_lib_if_needed(project_dir, zip)
 
-class NoOpDeployer(APIGatewayDeployer):
-    def deploy(self, *args, **kwargs):
-        return None, self._aws_client.region_name, None
+chalice.deploy.packager.LambdaDeploymentPackager = DomovoiDeploymentPackager
+chalice.deploy.deployer.LambdaDeploymentPackager = DomovoiDeploymentPackager
 
-    def delete(self, *args, **kwargs):
-        pass
+class DomovoiGraphBuilder(ApplicationGraphBuilder):
+    def _build_lambda_function(self, config, *args, **kwargs):
+        f = ApplicationGraphBuilder._build_lambda_function(self, config, *args, **kwargs)
+        f.function_name = '%s-%s' % (config.app_name, config.chalice_stage)
+        return f
 
-class DSSChaliceTypedAWSClient(chalice.awsclient.TypedAWSClient):
-    def update_function(self, *args, **kwargs):
-        kwargs.pop("role_arn", None)
-        super(DSSChaliceTypedAWSClient, self).update_function(*args, **kwargs)
-
-
-chalice.awsclient.TypedAWSClient = DSSChaliceTypedAWSClient
-chalice.deploy.deployer.TypedAWSClient = DSSChaliceTypedAWSClient
+chalice.deploy.deployer.ApplicationGraphBuilder = DomovoiGraphBuilder
+chalice.package.ApplicationGraphBuilder = DomovoiGraphBuilder
 
 def add_filter_config(event_config, event_handler):
     cfg = dict(event_config)
@@ -127,24 +124,25 @@ trust_statement = copy.deepcopy(chalice.constants.LAMBDA_TRUST_POLICY["Statement
 trust_statement["Principal"] = {"Service": urlparse(sfn.meta.endpoint_url).netloc}
 chalice.constants.LAMBDA_TRUST_POLICY["Statement"].append(trust_statement)
 
-factory = CLIFactory(args.project_dir)
-config = factory.create_config_obj(chalice_stage_name=args.stage, autogen_policy=False)
-deployer = factory.create_default_deployer(session=botocore_session, ui=UI(confirm=lambda *args, **kwargs: True))
-deployer._lambda_deploy._packager.__class__ = DomovoiDeploymentPackager
-deployer._apigateway_deploy.__class__ = NoOpDeployer
+config = CLIFactory(args.project_dir).create_config_obj(chalice_stage_name=args.stage, autogen_policy=False)
+deployer = create_default_deployer(session=botocore_session,
+                                   config=config,
+                                   ui=UI(confirm=lambda *args, **kwargs: True))
 function_name = '%s-%s' % (config.app_name, args.stage)
 
-if not deployer._lambda_deploy._app_policy.load_last_policy(config)["Statement"]:
-    default_iam_policy_filename = os.path.join(os.path.dirname(domovoi.__file__), "default_iam_policy.json")
-    with open(default_iam_policy_filename) as fh:
-        deployer._lambda_deploy._app_policy.record_policy(config, json.load(fh))
+#if not deployer._lambda_deploy._app_policy.load_last_policy(config)["Statement"]:
+#    default_iam_policy_filename = os.path.join(os.path.dirname(domovoi.__file__), "default_iam_policy.json")
+#    with open(default_iam_policy_filename) as fh:
+#        deployer._lambda_deploy._app_policy.record_policy(config, json.load(fh))
 
 if args.dry_run:
     lambda_arn = "arn:aws:lambda:::"
 else:
     deployed_values = deployer.deploy(config, chalice_stage_name=args.stage)
-    record_deployed_values(deployed_values, os.path.join(config.project_dir, ".chalice", "deployed.json"))
-    lambda_arn = config.deployed_resources(config.chalice_stage).api_handler_arn
+    for resource in deployed_values["resources"]:
+        if resource["resource_type"] == "lambda_function":
+            lambda_arn = resource["lambda_arn"]
+
     dlq_arn = config._chain_lookup('dead_letter_queue_target_arn')
     if dlq_arn:
         client = chalice.awsclient.TypedAWSClient(botocore_session)._client('lambda')

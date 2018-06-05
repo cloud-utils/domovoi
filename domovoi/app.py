@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import json, gzip, base64
 
-from chalice.app import Chalice
+from chalice.app import Chalice, LambdaFunction
 
 class DomovoiException(Exception):
     pass
@@ -21,6 +21,7 @@ class Domovoi(Chalice):
     dynamodb_event_sources = {}
     def __init__(self, app_name="Domovoi", configure_logs=True):
         Chalice.__init__(self, app_name=app_name, configure_logs=configure_logs)
+        self.pure_lambda_functions = [LambdaFunction(self, name=app_name, handler_string="app.app")]
 
     def scheduled_function(self, schedule, rule_name=None):
         return self.cloudwatch_rule(schedule_expression=schedule, event_pattern=None, rule_name=rule_name)
