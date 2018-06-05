@@ -2,19 +2,17 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import os, sys, argparse, inspect, json, hashlib, time, copy
+import os, sys, argparse, inspect, json, hashlib, time, copy, shutil
 
-import chalice, chalice.app, chalice.deploy.packager, chalice.deploy.deployer, chalice.package
+import attr
+import botocore, boto3.session
+import chalice, chalice.app, chalice.awsclient, chalice.deploy.packager, chalice.deploy.deployer, chalice.deploy.models
 from chalice.cli.factory import create_botocore_session, CLIFactory
 from chalice.deploy.packager import LambdaDeploymentPackager
-from chalice.deploy.deployer import create_default_deployer, ApplicationGraphBuilder
-
-from chalice.utils import record_deployed_values, UI, getting_started_prompt
+from chalice.deploy.deployer import create_default_deployer
+from chalice.utils import UI
 from chalice.compat import urlparse
-from chalice.constants import DEFAULT_STAGE_NAME, CLOUDWATCH_LOGS
-import chalice.awsclient, chalice.deploy.deployer
-
-import botocore, boto3.session
+from chalice.constants import DEFAULT_STAGE_NAME
 
 import domovoi
 
@@ -50,17 +48,21 @@ class DomovoiDeploymentPackager(LambdaDeploymentPackager):
         zip.write(os.path.join(project_dir, "app.py"), "app.py")
         self._add_chalice_lib_if_needed(project_dir, zip)
 
+@attr.attrs
+class ManagedIAMRole(chalice.deploy.models.ManagedIAMRole):
+    def __attrs_post_init__(self):
+        self.role_name = self.role_name.rpartition("-")[0]
+
+@attr.attrs
+class LambdaFunction(chalice.deploy.models.LambdaFunction):
+    def __attrs_post_init__(self):
+        self.function_name = self.function_name.rpartition("-")[0]
+
+
 chalice.deploy.packager.LambdaDeploymentPackager = DomovoiDeploymentPackager
 chalice.deploy.deployer.LambdaDeploymentPackager = DomovoiDeploymentPackager
-
-class DomovoiGraphBuilder(ApplicationGraphBuilder):
-    def _build_lambda_function(self, config, *args, **kwargs):
-        f = ApplicationGraphBuilder._build_lambda_function(self, config, *args, **kwargs)
-        f.function_name = '%s-%s' % (config.app_name, config.chalice_stage)
-        return f
-
-chalice.deploy.deployer.ApplicationGraphBuilder = DomovoiGraphBuilder
-chalice.package.ApplicationGraphBuilder = DomovoiGraphBuilder
+chalice.deploy.models.ManagedIAMRole = ManagedIAMRole
+chalice.deploy.models.LambdaFunction = LambdaFunction
 
 def add_filter_config(event_config, event_handler):
     cfg = dict(event_config)
@@ -101,10 +103,9 @@ if args.action == "new-project":
     create_new_project_skeleton(args.project_dir, profile=None)
     with open(os.path.join(args.project_dir, "app.py"), "w") as fh:
         fh.write(example_app)
-    policy = PolicyBuilder().build_policy_from_api_calls([])
-    policy["Statement"].append(CLOUDWATCH_LOGS)
-    with open(os.path.join(args.project_dir, ".chalice", "policy-{}.json".format(DEFAULT_STAGE_NAME)), "w") as fh:
-        json.dump(policy, fh, indent=2)
+    default_iam_policy_filename = os.path.join(os.path.dirname(domovoi.__file__), "default_iam_policy.json")
+    stage_iam_policy_filename = os.path.join(args.project_dir, ".chalice", "policy-{}.json".format(DEFAULT_STAGE_NAME))
+    shutil.copy(default_iam_policy_filename, stage_iam_policy_filename)
     parser.exit(status=0, message="New Domovoi project created in {}\n".format(args.project_dir))
 
 botocore_session = create_botocore_session(profile=args.profile, debug=args.debug)
@@ -129,11 +130,6 @@ deployer = create_default_deployer(session=botocore_session,
                                    config=config,
                                    ui=UI(confirm=lambda *args, **kwargs: True))
 function_name = '%s-%s' % (config.app_name, args.stage)
-
-#if not deployer._lambda_deploy._app_policy.load_last_policy(config)["Statement"]:
-#    default_iam_policy_filename = os.path.join(os.path.dirname(domovoi.__file__), "default_iam_policy.json")
-#    with open(default_iam_policy_filename) as fh:
-#        deployer._lambda_deploy._app_policy.record_policy(config, json.load(fh))
 
 if args.dry_run:
     lambda_arn = "arn:aws:lambda:::"
@@ -218,7 +214,8 @@ for s3_bucket, event_handler in domovoi_app.s3_subscribers.items():
                 old_cfgs = [cfg for cfg in new_config["TopicConfigurations"] if cfg["TopicArn"] != sns_topic.arn]
                 new_config["TopicConfigurations"] = [topic_configuration] + old_cfgs
             else:
-                old_cfgs = [cfg for cfg in new_config["LambdaFunctionConfigurations"] if cfg["LambdaFunctionArn"] != lambda_arn]
+                old_cfgs = [cfg for cfg in new_config["LambdaFunctionConfigurations"]
+                            if cfg["LambdaFunctionArn"] != lambda_arn]
                 new_config["LambdaFunctionConfigurations"] = [lambda_function_configuration] + old_cfgs
             notification.put(NotificationConfiguration=new_config)
             break
