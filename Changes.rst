@@ -1,3 +1,10 @@
+Changes for v1.6.1 (2018-06-06)
+===============================
+
+-  Set function description from “description” config key
+
+-  Fix version reporting and provide it in published Lambda tag
+
 Changes for v1.6.0 (2018-06-05)
 ===============================
 
