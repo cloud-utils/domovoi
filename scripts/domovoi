@@ -141,14 +141,15 @@ else:
         if resource["resource_type"] == "lambda_function":
             lambda_arn = resource["lambda_arn"]
 
+    client = chalice.awsclient.TypedAWSClient(botocore_session)._client("lambda")
+    fn_updates = dict(Description=config._chain_lookup("description") or "Domovoi event handler")
     dlq_arn = config._chain_lookup('dead_letter_queue_target_arn')
     if dlq_arn:
-        client = chalice.awsclient.TypedAWSClient(botocore_session)._client('lambda')
         print("Setting DLQ {} for {}".format(dlq_arn, function_name))
-        client.update_function_configuration(FunctionName=function_name, DeadLetterConfig=dict(TargetArn=dlq_arn))
+        fn_updates.update(DeadLetterConfig=dict(TargetArn=dlq_arn))
+    client.update_function_configuration(FunctionName=function_name, **fn_updates)
     reserved_concurrent_executions = config._chain_lookup('reserved_concurrent_executions')
     if reserved_concurrent_executions:
-        client = chalice.awsclient.TypedAWSClient(botocore_session)._client('lambda')
         print("Setting concurrency reservation {} for {}".format(reserved_concurrent_executions, function_name))
         client.put_function_concurrency(FunctionName=function_name,
                                         ReservedConcurrentExecutions=reserved_concurrent_executions)
