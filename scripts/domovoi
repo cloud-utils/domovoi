@@ -18,7 +18,7 @@ import domovoi
 
 try:
     import pkg_resources
-    __version__ = pkg_resources.get_distribution(__name__).version
+    __version__ = pkg_resources.get_distribution("domovoi").version
 except Exception:
     __version__ = "0.0.0"
 
@@ -126,6 +126,8 @@ trust_statement["Principal"] = {"Service": urlparse(sfn.meta.endpoint_url).netlo
 chalice.constants.LAMBDA_TRUST_POLICY["Statement"].append(trust_statement)
 
 config = CLIFactory(args.project_dir).create_config_obj(chalice_stage_name=args.stage, autogen_policy=False)
+config._user_provided_params.setdefault("tags", {})
+config._user_provided_params["tags"]["domovoi"] = "version={}".format(__version__)
 deployer = create_default_deployer(session=botocore_session,
                                    config=config,
                                    ui=UI(confirm=lambda *args, **kwargs: True))
