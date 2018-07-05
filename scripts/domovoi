@@ -212,7 +212,8 @@ for sns_topic, event_handler in domovoi_app.sns_subscribers.items():
 
 for sqs_queue, source_data in domovoi_app.sqs_subscribers.items():
     print("Subscribing", source_data["func"], "to SQS queue", sqs_queue)
-    put_event_source_mapping(event_source_arn=sqs.get_queue_by_name(QueueName=sqs_queue).attributes['QueueArn'],
+    queue_arn = sqs.get_queue_by_name(QueueName=sqs_queue).attributes['QueueArn'] if not args.dry_run else "arn:aws::::"
+    put_event_source_mapping(event_source_arn=queue_arn,
                              function_name=function_name,
                              source_data=source_data,
                              dry_run=args.dry_run)

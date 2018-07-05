@@ -5,8 +5,9 @@ Domovoi: AWS Lambda event handler manager
 <https://aws.amazon.com/lambda/>`_ `event sources
 <http://docs.aws.amazon.com/lambda/latest/dg/invoking-lambda-function.html#intro-core-components-event-sources>`_ other
 than HTTP requests through API Gateway. Domovoi lets you easily configure and deploy a Lambda function to run on a
-schedule or in response to a variety of events like an `SNS <https://aws.amazon.com/sns/>`_ push notification, S3 event, or
-custom `state machine <https://aws.amazon.com/step-functions/>`_ transition:
+schedule or in response to a variety of events like an `SNS <https://aws.amazon.com/sns/>`_ or
+`SQS <https://aws.amazon.com/sqs/>`_ message, S3 event, or custom
+`state machine <https://aws.amazon.com/step-functions/>`_ transition:
 
 .. code-block:: python
 
@@ -29,6 +30,13 @@ custom `state machine <https://aws.amazon.com/step-functions/>`_ transition:
     def tend(event, context):
         message = json.loads(event["Records"][0]["Sns"]["Message"])
         context.log(dict(beer="Quadrupel", quantity=message["beer"]))
+
+    @app.sqs_queue_subscriber("my_queue", batch_size=64)
+    def process_queue_messages(event, context):
+        message = json.loads(event["Records"][0]["body"])
+        message_attributes = event["Records"][0]["messageAttributes"]
+        # SQS messages are deleted upon successful exit, requeued otherwise.
+        # See https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html
 
     @app.cloudwatch_event_handler(source=["aws.ecs"])
     def monitor_ecs_events(event, context):
@@ -96,6 +104,8 @@ See `Supported Event Sources <http://docs.aws.amazon.com/lambda/latest/dg/invoki
 overview of event sources that can be used to trigger Lambda functions. Domovoi supports the following event sources:
 
 * `SNS subscriptions <https://docs.aws.amazon.com/lambda/latest/dg/eventsources.html#eventsources-sns>`_
+* `SQS queues <https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html>`_
+  (`sample event <https://docs.aws.amazon.com/lambda/latest/dg/eventsources.html#eventsources-sqs>`_)
 * CloudWatch Events rule targets, including CloudWatch Scheduled Events (see
   `CloudWatch Events Event Examples <http://docs.aws.amazon.com/AmazonCloudWatch/latest/events/EventTypes.html>`_ for a
   list of event types supported by CloudWatch Events)
