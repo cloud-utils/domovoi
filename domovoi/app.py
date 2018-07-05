@@ -130,7 +130,7 @@ class Domovoi(Chalice):
                 if sns_topic not in self.sns_subscribers:
                     raise DomovoiException("Received SNS or S3-SNS event with no known handler")
                 handler = self.sns_subscribers[sns_topic]
-        elif "Records" in event and event["Records"][0]["eventSource"] == "aws:sqs":
+        elif "Records" in event and event["Records"][0].get("eventSource") == "aws:sqs":
             queue_name = ARN(event["Records"][0]["eventSourceARN"]).resource
             handler = self.sqs_subscribers[queue_name]["func"]
         elif "Records" in event and "dynamodb" in event["Records"][0]:
