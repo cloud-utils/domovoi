@@ -15,6 +15,7 @@ class ARN:
 class Domovoi(Chalice):
     cloudwatch_events_rules = {}
     sns_subscribers = {}
+    sqs_subscribers = {}
     s3_subscribers = {}
     sfn_tasks = {}
     cwl_sub_filters = {}
@@ -32,9 +33,16 @@ class Domovoi(Chalice):
             return func
         return register_sns_subscriber
 
+    def sqs_queue_subscriber(self, queue_name, batch_size=None):
+        def register_sqs_subscriber(func):
+            self.sqs_subscribers[queue_name] = dict(batch_size=batch_size, func=func)
+            return func
+        return register_sqs_subscriber
+
     def dynamodb_stream_handler(self, table_name, batch_size=None):
         def register_dynamodb_event_source(func):
             self.dynamodb_event_sources[table_name] = dict(batch_size=batch_size, func=func)
+            return func
         return register_dynamodb_event_source
 
     def kinesis_stream_handler(self, **kwargs):
@@ -122,6 +130,9 @@ class Domovoi(Chalice):
                 if sns_topic not in self.sns_subscribers:
                     raise DomovoiException("Received SNS or S3-SNS event with no known handler")
                 handler = self.sns_subscribers[sns_topic]
+        elif "Records" in event and event["Records"][0]["eventSource"] == "aws:sqs":
+            queue_name = ARN(event["Records"][0]["eventSourceARN"]).resource
+            handler = self.sqs_subscribers[queue_name]["func"]
         elif "Records" in event and "dynamodb" in event["Records"][0]:
             event_source_arn = ARN(event["Records"][0]["eventSourceARN"])
             table_name = event_source_arn.resource.split("/")[1]

@@ -35,10 +35,10 @@ class TestDomovoi(unittest.TestCase):
         subprocess.check_call(["domovoi", "--dry-run", "deploy"], cwd="testproject")
 
     def test_state_machine_examples(self):
-        subprocess.check_call(["domovoi", "new-project", "sfn"])
+        subprocess.check_call(["domovoi", "new-project", "testproject-sfn"])
         shutil.copy(os.path.join(os.path.dirname(__file__), "..", "domovoi", "examples", "state_machine_app.py"),
-                    os.path.join("sfn", "app.py"))
-        subprocess.check_call(["domovoi", "--dry-run", "deploy"], cwd="sfn")
+                    os.path.join("testproject-sfn", "app.py"))
+        subprocess.check_call(["domovoi", "--dry-run", "deploy"], cwd="testproject-sfn")
 
     def test_state_machine_registration(self):
         sm_app = """

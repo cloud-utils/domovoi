@@ -5,6 +5,7 @@ lint:
 	flake8 scripts/*
 
 test: lint
+	-rm -rf testproject testproject2 testproject-sfn
 	python ./test/test.py -v
 
 init_docs:
