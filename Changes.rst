@@ -3,11 +3,6 @@ Changes for v1.7.0 (2018-07-05)
 
 -  Add support for SQS event sources
 
-Changes for v1.7.0 (2018-07-05)
-===============================
-
--  Add support for SQS event sources
-
 Changes for v1.6.1 (2018-06-06)
 ===============================
 
