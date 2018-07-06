@@ -83,9 +83,10 @@ class Domovoi(Chalice):
     def cloudwatch_event_handler(self, **kwargs):
         return self.cloudwatch_rule(schedule_expression=None, event_pattern=kwargs)
 
-    def s3_event_handler(self, bucket, events, prefix=None, suffix=None, use_sns=True):
+    def s3_event_handler(self, bucket, events, prefix=None, suffix=None, use_sns=True, use_sqs=False, sqs_batch_size=1):
         def register_s3_subscriber(func):
-            self.s3_subscribers[bucket] = dict(events=events, prefix=prefix, suffix=suffix, func=func, use_sns=use_sns)
+            self.s3_subscribers[bucket] = dict(events=events, prefix=prefix, suffix=suffix, func=func, use_sns=use_sns,
+                                               use_sqs=use_sqs, sqs_batch_size=sqs_batch_size)
             return func
         return register_s3_subscriber
 
@@ -126,9 +127,14 @@ class Domovoi(Chalice):
     def state_machine(self):
         return StateMachine(app=self)
 
-    def _find_sns_s3_event_sub(self, sns_s3_event):
-        assert sns_s3_event['Records'][0]["Sns"]['Subject'] == 'Amazon S3 Notification'
-        s3_event = json.loads(sns_s3_event['Records'][0]["Sns"]["Message"])
+    def _find_forwarded_s3_event(self, s3_event_envelope, forwarding_service):
+        assert forwarding_service in {"sns", "sqs"}
+        if forwarding_service == "sns":
+            assert s3_event_envelope['Records'][0]["Sns"]["Subject"] == "Amazon S3 Notification"
+            s3_event = json.loads(s3_event_envelope['Records'][0]["Sns"]["Message"])
+        elif forwarding_service == "sqs":
+            s3_event = json.loads(s3_event_envelope["Records"][0]["body"])
+            assert s3_event.get("Event") == "s3:TestEvent" or s3_event['Records'][0].get("eventSource") == "aws:s3"
         s3_bucket_name = s3_event.get("Bucket") or s3_event['Records'][0]["s3"]["bucket"]["name"]
         handler = self.s3_subscribers[s3_bucket_name]["func"] if s3_bucket_name in self.s3_subscribers else None
         return s3_event, handler
@@ -150,15 +156,19 @@ class Domovoi(Chalice):
             handler = self.s3_subscribers[s3_bucket_name]["func"]
         elif "Records" in event and "Sns" in event["Records"][0]:
             try:
-                event, handler = self._find_sns_s3_event_sub(event)
+                event, handler = self._find_forwarded_s3_event(event, forwarding_service="sns")
             except Exception:
                 sns_topic = ARN(event["Records"][0]["Sns"]["TopicArn"]).resource
                 if sns_topic not in self.sns_subscribers:
                     raise DomovoiException("Received SNS or S3-SNS event with no known handler")
                 handler = self.sns_subscribers[sns_topic]
         elif "Records" in event and event["Records"][0].get("eventSource") == "aws:sqs":
-            queue_name = ARN(event["Records"][0]["eventSourceARN"]).resource
-            handler = self.sqs_subscribers[queue_name]["func"]
+            try:
+                event, handler = self._find_forwarded_s3_event(event, forwarding_service="sqs")
+            except Exception:
+                raise
+                queue_name = ARN(event["Records"][0]["eventSourceARN"]).resource
+                handler = self.sqs_subscribers[queue_name]["func"]
         elif "Records" in event and "dynamodb" in event["Records"][0]:
             event_source_arn = ARN(event["Records"][0]["eventSourceARN"])
             table_name = event_source_arn.resource.split("/")[1]
