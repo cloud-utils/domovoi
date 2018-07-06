@@ -1,3 +1,10 @@
+Changes for v1.7.2 (2018-07-05)
+===============================
+
+-  Support state machine introspection and SQS-SFN springboard
+
+-  Update docs for SQS
+
 Changes for v1.7.1 (2018-07-05)
 ===============================
 
