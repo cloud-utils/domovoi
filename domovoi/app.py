@@ -12,6 +12,27 @@ class ARN:
     def __init__(self, arn="arn:aws::::", **kwargs):
         self.__dict__.update(dict(zip(self.fields, arn.split(":", 5)), **kwargs))
 
+    def __str__(self):
+        return ":".join(getattr(self, field) for field in self.fields)
+
+class StateMachine:
+    def __init__(self, app, client=None):
+        self.app = app
+        self._client = client
+
+    @property
+    def stepfunctions(self):
+        if self._client is None:
+            import boto3
+            self._client = boto3.client("stepfunctions")
+        return self._client
+
+    def start_execution(self, **input):
+        lambda_arn = ARN(self.app.lambda_context.invoked_function_arn)
+        lambda_name = lambda_arn.resource.split(":")[1]
+        state_machine_arn = ARN(str(lambda_arn), service="states", resource="stateMachine:" + lambda_name)
+        return self.stepfunctions.start_execution(stateMachineArn=str(state_machine_arn), input=json.dumps(input))
+
 class Domovoi(Chalice):
     cloudwatch_events_rules = {}
     sns_subscribers = {}
@@ -101,6 +122,10 @@ class Domovoi(Chalice):
                 states.update(cls.get_all_states(sub_sm))
         return states
 
+    @property
+    def state_machine(self):
+        return StateMachine(app=self)
+
     def _find_sns_s3_event_sub(self, sns_s3_event):
         assert sns_s3_event['Records'][0]["Sns"]['Subject'] == 'Amazon S3 Notification'
         s3_event = json.loads(sns_s3_event['Records'][0]["Sns"]["Message"])
@@ -110,6 +135,7 @@ class Domovoi(Chalice):
 
     def __call__(self, event, context):
         context.log("Domovoi dispatch of event {}".format(event))
+        self.lambda_context = context
         invoked_function_arn = ARN(context.invoked_function_arn)
         handler = None
         if "task_name" in event:

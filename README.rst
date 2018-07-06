@@ -31,12 +31,14 @@ schedule or in response to a variety of events like an `SNS <https://aws.amazon.
         message = json.loads(event["Records"][0]["Sns"]["Message"])
         context.log(dict(beer="Quadrupel", quantity=message["beer"]))
 
+    # SQS messages are deleted upon successful exit, requeued otherwise.
+    # See https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html
     @app.sqs_queue_subscriber("my_queue", batch_size=64)
     def process_queue_messages(event, context):
         message = json.loads(event["Records"][0]["body"])
         message_attributes = event["Records"][0]["messageAttributes"]
-        # SQS messages are deleted upon successful exit, requeued otherwise.
-        # See https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html
+        # You can colocate a state machine definition with an SQS handler to launch a SFN driven lambda from SQS.
+        return app.state_machine.start_execution(**message)["executionArn"]
 
     @app.cloudwatch_event_handler(source=["aws.ecs"])
     def monitor_ecs_events(event, context):
