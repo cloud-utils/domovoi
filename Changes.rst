@@ -1,3 +1,8 @@
+Changes for v1.7.4 (2018-07-10)
+===============================
+
+-  Allow queue attributes to be set in SQS
+
 Changes for v1.7.3 (2018-07-06)
 ===============================
 
