@@ -41,6 +41,9 @@ class Domovoi(Chalice):
     sfn_tasks = {}
     cwl_sub_filters = {}
     dynamodb_event_sources = {}
+
+    sqs_default_queue_attributes = {"VisibilityTimeout": "320"}
+
     def __init__(self, app_name="Domovoi", configure_logs=True):
         Chalice.__init__(self, app_name=app_name, configure_logs=configure_logs)
         self.pure_lambda_functions = [LambdaFunction(self, name=app_name, handler_string="app.app")]
@@ -54,9 +57,9 @@ class Domovoi(Chalice):
             return func
         return register_sns_subscriber
 
-    def sqs_queue_subscriber(self, queue_name, batch_size=None):
+    def sqs_queue_subscriber(self, queue_name, batch_size=None, queue_attributes=None):
         def register_sqs_subscriber(func):
-            self.sqs_subscribers[queue_name] = dict(batch_size=batch_size, func=func)
+            self.sqs_subscribers[queue_name] = dict(func=func, batch_size=batch_size, queue_attributes=queue_attributes)
             return func
         return register_sqs_subscriber
 
@@ -83,10 +86,12 @@ class Domovoi(Chalice):
     def cloudwatch_event_handler(self, **kwargs):
         return self.cloudwatch_rule(schedule_expression=None, event_pattern=kwargs)
 
-    def s3_event_handler(self, bucket, events, prefix=None, suffix=None, use_sns=True, use_sqs=False, sqs_batch_size=1):
+    def s3_event_handler(self, bucket, events, prefix=None, suffix=None, use_sns=True, use_sqs=False, sqs_batch_size=1,
+                         sqs_queue_attributes=None):
         def register_s3_subscriber(func):
             self.s3_subscribers[bucket] = dict(events=events, prefix=prefix, suffix=suffix, func=func, use_sns=use_sns,
-                                               use_sqs=use_sqs, sqs_batch_size=sqs_batch_size)
+                                               use_sqs=use_sqs, sqs_batch_size=sqs_batch_size,
+                                               sqs_queue_attributes=sqs_queue_attributes)
             return func
         return register_s3_subscriber
 
