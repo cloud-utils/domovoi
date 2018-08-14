@@ -1,3 +1,8 @@
+Changes for v1.7.5 (2018-08-14)
+===============================
+
+-  Grant SQS permissions to invoke lambda
+
 Changes for v1.7.4 (2018-07-10)
 ===============================
 
