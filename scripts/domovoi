@@ -80,16 +80,18 @@ def put_event_source_mapping(event_source_arn, function_name, source_data, dry_r
         event_source_mapping_args.update(StartingPosition="TRIM_HORIZON")
     if source_data["batch_size"] is not None:
         event_source_mapping_args.update(BatchSize=source_data["batch_size"])
+    esm = None
     try:
         if not dry_run:
-            awslambda.create_event_source_mapping(**event_source_mapping_args)
+            esm = awslambda.create_event_source_mapping(**event_source_mapping_args)
     except awslambda.exceptions.ResourceConflictException as e:
         assert "already exists" in str(e) and str(e).split()[-2] == "UUID"
         if source_data["batch_size"] is not None:
             esm_uuid = str(e).split()[-1]
             esm = awslambda.get_event_source_mapping(UUID=esm_uuid)
             if source_data["batch_size"] != esm["BatchSize"]:
-                awslambda.update_event_source_mapping(UUID=esm_uuid, BatchSize=source_data["batch_size"])
+                esm = awslambda.update_event_source_mapping(UUID=esm_uuid, BatchSize=source_data["batch_size"])
+    return esm
 
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
@@ -178,7 +180,7 @@ else:
 domovoi_app = config.chalice_app
 
 # TODO: consider narrowing trust policy
-for service in ("apigateway", "events", "sns", "s3", "logs"):
+for service in ("apigateway", "events", "sns", "sqs", "s3", "logs"):
     service_uri = service + ".amazonaws.com"
     policy = dict(FunctionName=lambda_arn, Principal=service_uri, Action="lambda:InvokeFunction")
     policy_id = "domovoi-{}".format(hashlib.md5(json.dumps(policy).encode()).hexdigest()[:8])
@@ -224,7 +226,7 @@ for sqs_queue, source_data in domovoi_app.sqs_subscribers.items():
                                  dry_run=args.dry_run)
 
 for s3_bucket, event_handler in domovoi_app.s3_subscribers.items():
-    print("Subscribing", event_handler, "to events in S3 bucket", s3_bucket)
+    print("Subscribing", event_handler["func"], "to events in S3 bucket", s3_bucket)
     if args.dry_run:
         continue
     if event_handler["use_sqs"]:
@@ -235,12 +237,14 @@ for s3_bucket, event_handler in domovoi_app.s3_subscribers.items():
                                  "Resource": queue_arn,
                                  "Principal": {"AWS": "*"},
                                  "Condition": {"ArnLike": {"aws:SourceArn": "arn:aws:s3:*:*:" + s3_bucket}}}]}
+        policy["Statement"][0]["Sid"] = "domovoi-{}".format(hashlib.md5(json.dumps(policy).encode()).hexdigest()[:8])
         queue_attributes = dict(domovoi_app.sqs_default_queue_attributes)
         queue_attributes.update(event_handler["sqs_queue_attributes"] or {}, Policy=json.dumps(policy))
         sqs_queue.set_attributes(Attributes=queue_attributes)
-        put_event_source_mapping(event_source_arn=queue_arn,
-                                 function_name=function_name,
-                                 source_data=dict(batch_size=event_handler["sqs_batch_size"]))
+        esm = put_event_source_mapping(event_source_arn=queue_arn,
+                                       function_name=function_name,
+                                       source_data=dict(batch_size=event_handler["sqs_batch_size"]))
+        print("Created event source mapping", esm["UUID"])
         queue_configuration = dict(QueueArn=queue_arn, Events=event_handler["events"])
         queue_configuration = add_filter_config(queue_configuration, event_handler)
     elif event_handler["use_sns"]:
@@ -250,6 +254,7 @@ for s3_bucket, event_handler in domovoi_app.s3_subscribers.items():
                                  "Resource": sns_topic.arn,
                                  "Principal": {"Service": ["s3.amazonaws.com"]},
                                  "Condition": {"ArnLike": {"aws:SourceArn": "arn:aws:s3:*:*:" + s3_bucket}}}]}
+        policy["Statement"][0]["Sid"] = "domovoi-{}".format(hashlib.md5(json.dumps(policy).encode()).hexdigest()[:8])
         sns_topic.set_attributes(AttributeName="Policy", AttributeValue=json.dumps(policy))
         subscription = sns_topic.subscribe(Protocol="lambda", Endpoint=lambda_arn)
         print("Subscribed to", subscription)
