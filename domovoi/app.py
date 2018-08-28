@@ -171,7 +171,6 @@ class Domovoi(Chalice):
             try:
                 event, handler = self._find_forwarded_s3_event(event, forwarding_service="sqs")
             except Exception:
-                raise
                 queue_name = ARN(event["Records"][0]["eventSourceARN"]).resource
                 handler = self.sqs_subscribers[queue_name]["func"]
         elif "Records" in event and "dynamodb" in event["Records"][0]:
