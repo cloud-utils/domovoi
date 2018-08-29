@@ -4,8 +4,6 @@ import json, gzip, base64, logging
 
 from chalice.app import Chalice, LambdaFunction
 
-logger = logging.getLogger(__name__)
-
 class DomovoiException(Exception):
     pass
 
@@ -147,7 +145,7 @@ class Domovoi(Chalice):
         return s3_event, handler
 
     def __call__(self, event, context):
-        print("Domovoi dispatch of event", event)
+        self.log.info("Domovoi dispatch of event %s", event)
         self.lambda_context = context
         invoked_function_arn = ARN(context.invoked_function_arn)
         handler = None
@@ -192,5 +190,5 @@ class Domovoi(Chalice):
         if handler is None:
             raise DomovoiException("No handler found for event {}".format(event))
         result = handler(event, context)
-        print(result)
+        self.log.info("%s", result)
         return result
