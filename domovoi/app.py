@@ -48,6 +48,13 @@ class Domovoi(Chalice):
         Chalice.__init__(self, app_name=app_name, configure_logs=configure_logs)
         self.pure_lambda_functions = [LambdaFunction(self, name=app_name, handler_string="app.app")]
 
+    def _configure_log_level(self):
+        if self._debug:
+            level = logging.DEBUG
+        else:
+            level = logging.INFO
+        self.log.setLevel(level)
+
     def scheduled_function(self, schedule, rule_name=None):
         return self.cloudwatch_rule(schedule_expression=schedule, event_pattern=None, rule_name=rule_name)
 
