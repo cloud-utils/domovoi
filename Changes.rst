@@ -1,3 +1,11 @@
+Changes for v1.7.7 (2018-08-29)
+===============================
+
+-  Enable refresh deployment in packager
+
+-  Use Python logging library instead of Lambda context.log (#11, thanks
+   to @irgeek)
+
 Changes for v1.7.6 (2018-08-28)
 ===============================
 
