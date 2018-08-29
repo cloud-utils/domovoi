@@ -50,13 +50,6 @@ class Domovoi(Chalice):
         Chalice.__init__(self, app_name=app_name, configure_logs=configure_logs)
         self.pure_lambda_functions = [LambdaFunction(self, name=app_name, handler_string="app.app")]
 
-    def _configure_log_level(self):
-        if self._debug:
-            level = logging.DEBUG
-        else:
-            level = logging.INFO
-        self.log.setLevel(level)
-
     def scheduled_function(self, schedule, rule_name=None):
         return self.cloudwatch_rule(schedule_expression=schedule, event_pattern=None, rule_name=rule_name)
 
@@ -154,7 +147,7 @@ class Domovoi(Chalice):
         return s3_event, handler
 
     def __call__(self, event, context):
-        logger.info("Domovoi dispatch of event %r", event)
+        print("Domovoi dispatch of event", event)
         self.lambda_context = context
         invoked_function_arn = ARN(context.invoked_function_arn)
         handler = None
@@ -199,5 +192,5 @@ class Domovoi(Chalice):
         if handler is None:
             raise DomovoiException("No handler found for event {}".format(event))
         result = handler(event, context)
-        logger.info("%r", result)
+        print(result)
         return result
