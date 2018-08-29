@@ -24,29 +24,41 @@ except Exception:
 
 class DomovoiDeploymentPackager(LambdaDeploymentPackager):
     _CHALICE_LIB_DIR = "domovoilib"
-    def _add_app_files(self, zip, project_dir):
+    def _add_app_files(self, zip_fileobj, project_dir):
         domovoi_router = inspect.getfile(domovoi.app)
         if domovoi_router.endswith(".pyc"):
             domovoi_router = domovoi_router[:-1]
-        zip.write(domovoi_router, "domovoi/app.py")
+        zip_fileobj.write(domovoi_router, "domovoi/app.py")
 
         domovoi_init = inspect.getfile(domovoi)
         if domovoi_init.endswith(".pyc"):
             domovoi_init = domovoi_init[:-1]
-        zip.write(domovoi_init, "domovoi/__init__.py")
+        zip_fileobj.write(domovoi_init, "domovoi/__init__.py")
 
         chalice_router = inspect.getfile(chalice.app)
         if chalice_router.endswith(".pyc"):
             chalice_router = chalice_router[:-1]
-        zip.write(chalice_router, "chalice/app.py")
+        zip_fileobj.write(chalice_router, "chalice/app.py")
 
         chalice_init = inspect.getfile(chalice)
         if chalice_init.endswith(".pyc"):
             chalice_init = chalice_init[:-1]
-        zip.write(chalice_init, "chalice/__init__.py")
+        zip_fileobj.write(chalice_init, "chalice/__init__.py")
 
-        zip.write(os.path.join(project_dir, "app.py"), "app.py")
-        self._add_chalice_lib_if_needed(project_dir, zip)
+        zip_fileobj.write(os.path.join(project_dir, "app.py"), "app.py")
+        self._add_chalice_lib_if_needed(project_dir, zip_fileobj)
+
+    def _needs_latest_version(self, filename):
+        return filename == 'app.py' or filename.startswith(('domovoilib/', 'domovoi/'))
+
+    def create_deployment_package(self, project_dir, python_version, package_filename=None):
+        deployment_package_filename = self.deployment_package_filename(project_dir, python_version)
+        if os.path.exists(deployment_package_filename):
+            self.inject_latest_app(deployment_package_filename, project_dir)
+            return deployment_package_filename
+        else:
+            return LambdaDeploymentPackager.create_deployment_package(self, project_dir, python_version,
+                                                                      package_filename=package_filename)
 
 @attr.attrs
 class ManagedIAMRole(chalice.deploy.models.ManagedIAMRole):
