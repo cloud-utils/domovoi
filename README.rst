@@ -47,15 +47,13 @@ schedule or in response to a variety of events like an `SNS <https://aws.amazon.
 
     @app.s3_event_handler(bucket="myS3bucket", events=["s3:ObjectCreated:*"], prefix="foo", suffix=".bar")
     def monitor_s3(event, context):
-        message = json.loads(event["Records"][0]["Sns"]["Message"])
-        context.log("Got an event from S3: {}".format(message))
+        context.log("Got an event from S3: {}".format(event))
 
-    # Set use_sns=False to subscribe your Lambda directly to S3 events without forwrading them through an SNS topic.
+    # Set use_sns=False, use_sqs=False to subscribe your Lambda directly to S3 events without forwrading them through an SNS-SQS bridge.
     # That approach has fewer moving parts, but you can only subscribe one Lambda function to events in a given S3 bucket.
-    @app.s3_event_handler(bucket="myS3bucket", events=["s3:ObjectCreated:*"], prefix="foo", suffix=".bar", use_sns=False)
+    @app.s3_event_handler(bucket="myS3bucket", events=["s3:ObjectCreated:*"], prefix="foo", suffix=".bar", use_sns=False, use_sqs=False)
     def monitor_s3(event, context):
-        message = json.loads(event["Records"][0]["Sns"]["Message"])
-        context.log("Got an event from S3: {}".format(message))
+        context.log("Got an event from S3: {}".format(event))
 
     # DynamoDB event format: https://docs.aws.amazon.com/lambda/latest/dg/eventsources.html#eventsources-ddb-update
     @app.dynamodb_stream_handler(table_name="MyDynamoTable", batch_size=200)

@@ -145,7 +145,11 @@ class Domovoi(Chalice):
             assert s3_event_envelope['Records'][0]["Sns"]["Subject"] == "Amazon S3 Notification"
             s3_event = json.loads(s3_event_envelope['Records'][0]["Sns"]["Message"])
         elif forwarding_service == "sqs":
-            s3_event = json.loads(s3_event_envelope["Records"][0]["body"])
+            forwarded_event = json.loads(s3_event_envelope["Records"][0]["body"])
+            if forwarded_event.get("TopicArn") and forwarded_event.get("Subject") == "Amazon S3 Notification":
+                s3_event = json.loads(forwarded_event["Message"])
+            else:
+                s3_event = forwarded_event
             assert s3_event.get("Event") == "s3:TestEvent" or s3_event['Records'][0].get("eventSource") == "aws:s3"
         s3_bucket_name = s3_event.get("Bucket") or s3_event['Records'][0]["s3"]["bucket"]["name"]
         handler = self.s3_subscribers[s3_bucket_name]["func"] if s3_bucket_name in self.s3_subscribers else None
