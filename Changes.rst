@@ -1,3 +1,8 @@
+Changes for v1.8.1 (2018-09-14)
+===============================
+
+Build SNS-SQS bridge to mux lambdas onto S3 event types
+
 Changes for v1.8.0 (2018-08-29)
 ===============================
 
