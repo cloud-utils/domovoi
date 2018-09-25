@@ -28,10 +28,16 @@ class StateMachine:
         return self._client
 
     def start_execution(self, **input):
+        return self.start_named_execution(None, **input)
+
+    def start_named_execution(self, name, **input):
         lambda_arn = ARN(self.app.lambda_context.invoked_function_arn)
         lambda_name = lambda_arn.resource.split(":")[1]
         state_machine_arn = ARN(str(lambda_arn), service="states", resource="stateMachine:" + lambda_name)
-        return self.stepfunctions.start_execution(stateMachineArn=str(state_machine_arn), input=json.dumps(input))
+        start_execution_args = dict(stateMachineArn=str(state_machine_arn), input=json.dumps(input))
+        if name is not None:
+            start_execution_args.update(name=name)
+        return self.stepfunctions.start_execution(**start_execution_args)
 
 class Domovoi(Chalice):
     cloudwatch_events_rules = {}
