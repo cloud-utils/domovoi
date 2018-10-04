@@ -49,7 +49,7 @@ schedule or in response to a variety of events like an `SNS <https://aws.amazon.
     def monitor_s3(event, context):
         context.log("Got an event from S3: {}".format(event))
 
-    # Set use_sns=False, use_sqs=False to subscribe your Lambda directly to S3 events without forwrading them through an SNS-SQS bridge.
+    # Set use_sns=False, use_sqs=False to subscribe your Lambda directly to S3 events without forwarding them through an SNS-SQS bridge.
     # That approach has fewer moving parts, but you can only subscribe one Lambda function to events in a given S3 bucket.
     @app.s3_event_handler(bucket="myS3bucket", events=["s3:ObjectCreated:*"], prefix="foo", suffix=".bar", use_sns=False, use_sqs=False)
     def monitor_s3(event, context):
