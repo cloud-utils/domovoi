@@ -1,3 +1,8 @@
+Changes for v1.8.3 (2018-10-11)
+===============================
+
+-  Add app.state_machine.start_named_execution(name, \*args)
+
 Changes for v1.8.2 (2018-09-14)
 ===============================
 
