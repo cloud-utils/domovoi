@@ -268,9 +268,9 @@ for s3_bucket, event_handler in domovoi_app.s3_subscribers.items():
         continue
     if event_handler["use_sqs"] and event_handler["use_sns"]:
         # An SNS-SQS bridge is the only option for subscribing multiple Lambdas to the same S3 event type with SQS
-        topic_name = "domovoi-s3-bucket-events-{}".format(s3_bucket.replace(".", "_"))
+        topic_name = "domovoi-s3-events-{}".format(s3_bucket.replace(".", "_"))
         sns_topic = ensure_topic(topic_name, s3_bucket)
-        queue_name = "domovoi-s3-bucket-events-{}-{}".format(s3_bucket.replace(".", "_"), function_name)
+        queue_name = "domovoi-s3-events-{}-{}".format(s3_bucket.replace(".", "_"), function_name)
         sqs_queue = ensure_queue(queue_name, sender_arn="arn:aws:sns:*:*:" + topic_name, event_handler=event_handler)
         queue_arn = sqs_queue.attributes["QueueArn"]
         subscription = sns_topic.subscribe(Protocol="sqs", Endpoint=queue_arn)
@@ -282,7 +282,7 @@ for s3_bucket, event_handler in domovoi_app.s3_subscribers.items():
         topic_configuration = dict(TopicArn=sns_topic.arn, Events=event_handler["events"])
         topic_configuration = add_filter_config(topic_configuration, event_handler)
     elif event_handler["use_sqs"]:
-        queue_name = "domovoi-s3-bucket-events-{}-{}".format(s3_bucket.replace(".", "_"), function_name)
+        queue_name = "domovoi-s3-events-{}-{}".format(s3_bucket.replace(".", "_"), function_name)
         sqs_queue = ensure_queue(queue_name, sender_arn="arn:aws:s3:*:*:" + s3_bucket, event_handler=event_handler)
         queue_arn = sqs_queue.attributes["QueueArn"]
         esm = put_event_source_mapping(event_source_arn=queue_arn,
@@ -292,7 +292,7 @@ for s3_bucket, event_handler in domovoi_app.s3_subscribers.items():
         queue_configuration = dict(QueueArn=queue_arn, Events=event_handler["events"])
         queue_configuration = add_filter_config(queue_configuration, event_handler)
     elif event_handler["use_sns"]:
-        topic_name = "domovoi-s3-bucket-events-{}".format(s3_bucket.replace(".", "_"))
+        topic_name = "domovoi-s3-events-{}".format(s3_bucket.replace(".", "_"))
         sns_topic = ensure_topic(topic_name, s3_bucket)
         subscription = sns_topic.subscribe(Protocol="lambda", Endpoint=lambda_arn)
         print("Subscribed", lambda_arn, "to", subscription)
