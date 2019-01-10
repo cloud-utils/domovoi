@@ -1,3 +1,8 @@
+Changes for v1.9.0 (2019-01-10)
+===============================
+
+-  Condense SNS/SQS names for brevity
+
 Changes for v1.8.3 (2018-10-11)
 ===============================
 

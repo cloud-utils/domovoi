@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="domovoi",
-    version="1.8.3",
+    version="1.9.0",
     url='https://github.com/kislyuk/domovoi',
     license='Apache Software License',
     author='Andrey Kislyuk',
