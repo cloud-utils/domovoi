@@ -158,6 +158,7 @@ dynamodb = boto3_session.resource("dynamodb")
 ec2 = boto3_session.resource("ec2")
 elbv2 = boto3_session.client("elbv2")
 acm = boto3_session.client("acm")
+route53 = boto3_session.client("route53")
 
 trust_statement = copy.deepcopy(chalice.constants.LAMBDA_TRUST_POLICY["Statement"][0])
 trust_statement["Principal"] = {"Service": urlparse(sfn.meta.endpoint_url).netloc}
@@ -224,6 +225,31 @@ def ensure_ingress_rule(security_group, **kwargs):
     else:
         security_group.authorize_ingress(CidrIp=cidr_ip, **kwargs)
 
+def find_route53_zone_for_name(dns_name):
+    best_zone = None
+    for page in route53.get_paginator("list_hosted_zones").paginate():
+        for zone in page["HostedZones"]:
+            if dns_name.endswith(zone["Name"].rstrip(".")):
+                if best_zone is None or len(best_zone["Name"]) < len(zone["Name"]):
+                    best_zone = zone
+    return best_zone
+
+def update_alias_dns_record(source_dns_name, target_dns_name, hosted_zone_id):
+    zone = find_route53_zone_for_name(source_dns_name)
+    zone_update = {
+        "Action": "UPSERT",
+        "ResourceRecordSet": {
+            "Name": source_dns_name,
+            "Type": "A",
+            "AliasTarget": {
+                'HostedZoneId': hosted_zone_id,
+                'DNSName': target_dns_name,
+                'EvaluateTargetHealth': False
+            }
+        }
+    }
+    route53.change_resource_record_sets(HostedZoneId=zone["Id"], ChangeBatch=dict(Changes=[zone_update]))
+
 
 if domovoi_app.alb_targets:
     if not args.dry_run:
@@ -265,9 +291,8 @@ if domovoi_app.alb_targets:
             listener = res["Listeners"][0]
             print("Using listener", listener["ListenerArn"])
             res = elbv2.register_targets(TargetGroupArn=target_group["TargetGroupArn"], Targets=[dict(Id=lambda_arn)])
-            print("ALB DNS name:", alb["DNSName"])
-            print("Please point the DNS record for {} to {}".format(alb_acm_cert_dns_name, alb["DNSName"]))
-            # TODO: write route53 DNS record
+            print("Updating the Route53 ALIAS DNS record for {} to {}".format(alb_acm_cert_dns_name, alb["DNSName"]))
+            update_alias_dns_record(alb_acm_cert_dns_name, alb["DNSName"], hosted_zone_id=alb["CanonicalHostedZoneId"])
 
 for task_name, task in domovoi_app.cloudwatch_events_rules.items():
     print("Scheduling", task_name, "to run on schedule", task["schedule_expression"], "pattern", task["event_pattern"])
