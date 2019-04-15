@@ -47,6 +47,7 @@ class Domovoi(Chalice):
     sfn_tasks = {}
     cwl_sub_filters = {}
     dynamodb_event_sources = {}
+    alb_targets = {}
 
     sqs_default_queue_attributes = {"VisibilityTimeout": "320"}
 
@@ -60,6 +61,11 @@ class Domovoi(Chalice):
         else:
             level = logging.INFO
         self.log.setLevel(level)
+
+    def alb_target(self, prefix=""):
+        def register_alb_target(func):
+            self.alb_targets[prefix] = dict(func=func, prefix=prefix)
+        return register_alb_target
 
     def scheduled_function(self, schedule, rule_name=None):
         return self.cloudwatch_rule(schedule_expression=schedule, event_pattern=None, rule_name=rule_name)
@@ -166,6 +172,14 @@ class Domovoi(Chalice):
         self.lambda_context = context
         invoked_function_arn = ARN(context.invoked_function_arn)
         handler = None
+        if "requestContext" in event and "elb" in event["requestContext"]:
+            target = None
+            # TODO: use suffix tree to avoid O(N) scan of route table
+            for prefix, alb_target in self.alb_targets.items():
+                if event["path"].startswith(prefix):
+                    if target is None or len(target["prefix"]) < len(alb_target["prefix"]):
+                        target = alb_target
+            handler = target["func"]
         if "task_name" in event:
             if event["task_name"] not in self.cloudwatch_events_rules:
                 raise DomovoiException("Received CloudWatch event for a task with no known handler")

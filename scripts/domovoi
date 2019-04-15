@@ -155,6 +155,9 @@ sfn = boto3.client("stepfunctions")
 iam = boto3_session.resource("iam")
 logs = boto3_session.client("logs")
 dynamodb = boto3_session.resource("dynamodb")
+ec2 = boto3_session.resource("ec2")
+elbv2 = boto3_session.client("elbv2")
+acm = boto3_session.client("acm")
 
 trust_statement = copy.deepcopy(chalice.constants.LAMBDA_TRUST_POLICY["Statement"][0])
 trust_statement["Principal"] = {"Service": urlparse(sfn.meta.endpoint_url).netloc}
@@ -188,11 +191,12 @@ else:
         print("Setting concurrency reservation {} for {}".format(reserved_concurrent_executions, function_name))
         client.put_function_concurrency(FunctionName=function_name,
                                         ReservedConcurrentExecutions=reserved_concurrent_executions)
+    alb_acm_cert_dns_name = config._chain_lookup('alb_acm_cert_dns_name')
 
 domovoi_app = config.chalice_app
 
 # TODO: consider narrowing trust policy
-for service in ("apigateway", "events", "sns", "sqs", "s3", "logs"):
+for service in ("apigateway", "events", "sns", "sqs", "s3", "logs", "elasticloadbalancing"):
     service_uri = service + ".amazonaws.com"
     policy = dict(FunctionName=lambda_arn, Principal=service_uri, Action="lambda:InvokeFunction")
     policy_id = "domovoi-{}".format(hashlib.md5(json.dumps(policy).encode()).hexdigest()[:8])
@@ -202,6 +206,68 @@ for service in ("apigateway", "events", "sns", "sqs", "s3", "logs"):
             awslambda.add_permission(StatementId=policy_id, **policy)
         except awslambda.exceptions.ResourceConflictException:
             print("Found existing permission grant statement {}, skipping".format(policy_id))
+
+def find_acm_cert(dns_name):
+    for page in acm.get_paginator("list_certificates").paginate(CertificateStatuses=["ISSUED"]):
+        for cert in page["CertificateSummaryList"]:
+            if cert["DomainName"] == dns_name:
+                return cert
+    raise Exception("Unable to find ACM certificate for {}".format(dns_name))
+
+def ensure_ingress_rule(security_group, **kwargs):
+    cidr_ip = kwargs.pop("CidrIp")
+    for rule in security_group.ip_permissions:
+        ip_range_matches = any(cidr_ip == ip_range["CidrIp"] for ip_range in rule["IpRanges"])
+        opts_match = all(rule.get(arg) == kwargs[arg] for arg in kwargs)
+        if ip_range_matches and opts_match:
+            break
+    else:
+        security_group.authorize_ingress(CidrIp=cidr_ip, **kwargs)
+
+
+if domovoi_app.alb_targets:
+    if not args.dry_run:
+        if not alb_acm_cert_dns_name:
+            raise Exception('Please set the "alb_acm_cert_dns_name" config key in your .chalice/config.json '
+                            'to the DNS name of a validated ACM certificate in your account')
+        for vpc in ec2.vpcs.filter(Filters=[dict(Name="isDefault", Values=["true"])]):
+            break
+        else:
+            raise Exception("A default VPC is required")
+        security_group_name = "domovoi-{}".format(function_name)
+        try:
+            security_group = vpc.create_security_group(GroupName=security_group_name,
+                                                       Description="Automatically managed by Domovoi for Lambda ALB")
+        except botocore.exceptions.ClientError as e:
+            if "InvalidGroup.Duplicate" not in str(e):
+                raise
+            security_group = list(vpc.security_groups.filter(GroupNames=[security_group_name]))[0]
+
+        ensure_ingress_rule(security_group, IpProtocol="tcp", FromPort=443, ToPort=443, CidrIp="0.0.0.0/0")
+
+        for prefix, handler in domovoi_app.alb_targets.items():
+            res = elbv2.create_load_balancer(Name=function_name,
+                                             Subnets=[subnet.id for subnet in vpc.subnets.all()],
+                                             SecurityGroups=[security_group.id])
+            alb = res["LoadBalancers"][0]
+            print("Using ALB", alb["LoadBalancerArn"])
+            res = elbv2.create_target_group(Name=function_name, TargetType="lambda")
+            target_group = res["TargetGroups"][0]
+            print("Using target group", target_group["TargetGroupArn"])
+            cert = find_acm_cert(alb_acm_cert_dns_name)
+            print("Using ACM certificate", cert["CertificateArn"])
+            default_action = dict(Type="forward", TargetGroupArn=target_group["TargetGroupArn"])
+            res = elbv2.create_listener(LoadBalancerArn=alb["LoadBalancerArn"],
+                                        Protocol="HTTPS",
+                                        Port=443,
+                                        Certificates=[dict(CertificateArn=cert["CertificateArn"])],
+                                        DefaultActions=[default_action])
+            listener = res["Listeners"][0]
+            print("Using listener", listener["ListenerArn"])
+            res = elbv2.register_targets(TargetGroupArn=target_group["TargetGroupArn"], Targets=[dict(Id=lambda_arn)])
+            print("ALB DNS name:", alb["DNSName"])
+            print("Please point the DNS record for {} to {}".format(alb_acm_cert_dns_name, alb["DNSName"]))
+            # TODO: write route53 DNS record
 
 for task_name, task in domovoi_app.cloudwatch_events_rules.items():
     print("Scheduling", task_name, "to run on schedule", task["schedule_expression"], "pattern", task["event_pattern"])

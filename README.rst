@@ -4,9 +4,10 @@ Domovoi: AWS Lambda event handler manager
 *Domovoi* is an extension to `AWS Chalice <https://github.com/awslabs/chalice>`_ to handle `AWS Lambda
 <https://aws.amazon.com/lambda/>`_ `event sources
 <http://docs.aws.amazon.com/lambda/latest/dg/invoking-lambda-function.html#intro-core-components-event-sources>`_ other
-than HTTP requests through API Gateway. Domovoi lets you easily configure and deploy a Lambda function to run on a
-schedule or in response to a variety of events like an `SNS <https://aws.amazon.com/sns/>`_ or
-`SQS <https://aws.amazon.com/sqs/>`_ message, S3 event, or custom
+than HTTP requests through API Gateway. Domovoi lets you easily configure and deploy a Lambda function to serve HTTP
+requests through `ALB <https://docs.aws.amazon.com/elasticloadbalancing/latest/application/lambda-functions.html>`_,
+on a schedule, or in response to a variety of events like an `SNS <https://aws.amazon.com/sns/>`_
+or `SQS <https://aws.amazon.com/sqs/>`_ message, S3 event, or custom
 `state machine <https://aws.amazon.com/step-functions/>`_ transition:
 
 .. code-block:: python
@@ -14,6 +15,14 @@ schedule or in response to a variety of events like an `SNS <https://aws.amazon.
     import json, boto3, domovoi
 
     app = domovoi.Domovoi()
+
+    @app.alb_target()
+    def serve(event, context):
+        return dict(statusCode=200,
+                    statusDescription="200 OK",
+                    isBase64Encoded=False,
+                    headers={"Content-Type": "application/json"},
+                    body=json.dumps({"hello": "world"}))
 
     @app.scheduled_function("cron(0 18 ? * MON-FRI *)")
     def foo(event, context):
@@ -55,7 +64,7 @@ schedule or in response to a variety of events like an `SNS <https://aws.amazon.
     def monitor_s3(event, context):
         context.log("Got an event from S3: {}".format(event))
 
-    # DynamoDB event format: https://docs.aws.amazon.com/lambda/latest/dg/eventsources.html#eventsources-ddb-update
+    # DynamoDB event format: https://docs.aws.amazon.com/lambda/latest/dg/with-ddb.html
     @app.dynamodb_stream_handler(table_name="MyDynamoTable", batch_size=200)
     def handle_dynamodb_stream(event, context):
         context.log("Got {} events from DynamoDB".format(len(event["Records"])))
@@ -103,16 +112,17 @@ Supported event types
 See `Supported Event Sources <http://docs.aws.amazon.com/lambda/latest/dg/invoking-lambda-function.html>`_ for an
 overview of event sources that can be used to trigger Lambda functions. Domovoi supports the following event sources:
 
-* `SNS subscriptions <https://docs.aws.amazon.com/lambda/latest/dg/eventsources.html#eventsources-sns>`_
+* `ALB HTTPS requests <https://docs.aws.amazon.com/lambda/latest/dg/lambda-services.html>`_
+* `SNS subscriptions <https://docs.aws.amazon.com/lambda/latest/dg/with-sns.html>`_
 * `SQS queues <https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html>`_
-  (`sample event <https://docs.aws.amazon.com/lambda/latest/dg/eventsources.html#eventsources-sqs>`_)
-* CloudWatch Events rule targets, including CloudWatch Scheduled Events (see
+* CloudWatch Events rule targets, including
+  `CloudWatch Scheduled Events <https://docs.aws.amazon.com/lambda/latest/dg/with-scheduled-events.html>`_ (see
   `CloudWatch Events Event Examples <http://docs.aws.amazon.com/AmazonCloudWatch/latest/events/EventTypes.html>`_ for a
   list of event types supported by CloudWatch Events)
-* `S3 events <https://docs.aws.amazon.com/lambda/latest/dg/eventsources.html#eventsources-s3-put>`_
+* `S3 events <https://docs.aws.amazon.com/lambda/latest/dg/with-s3.html>`_
 * AWS Step Functions state machine tasks
-* `CloudWatch Logs filter subscriptions <https://docs.aws.amazon.com/lambda/latest/dg/eventsources.html#eventsources-cloudwatch-logs>`_
-* `DynamoDB stream events <https://docs.aws.amazon.com/lambda/latest/dg/eventsources.html#eventsources-ddb-update>`_
+* `CloudWatch Logs filter subscriptions <https://docs.aws.amazon.com/lambda/latest/dg/services-cloudwatchlogs.html>`_
+* `DynamoDB stream events <https://docs.aws.amazon.com/lambda/latest/dg/with-ddb.html>`_
 
 Possible future event sources to support:
 
