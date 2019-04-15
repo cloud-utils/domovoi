@@ -16,6 +16,8 @@ or `SQS <https://aws.amazon.com/sqs/>`_ message, S3 event, or custom
 
     app = domovoi.Domovoi()
 
+    # Compared to API Gateway, ALB increases the response timeout from 30s to 900s, but reduces the payload
+    # limit from 10MB to 1MB. It also does not try to negotiate on the Accept/Content-Type headers.
     @app.alb_target()
     def serve(event, context):
         return dict(statusCode=200,
@@ -148,6 +150,25 @@ ARN of the Lambda itself.
 
 Configuration
 ~~~~~~~~~~~~~
+
+ALB
+^^^
+To use your Lambda as an ALB target with the ``@alb_target(prefix="...")`` decorator, you should pre-configure the
+following resources in your AWS account:
+
+* A Route 53 hosted DNS zone such as ``example.com.``, with a domain (``example.com``) pointing to it
+* An active (verified/issued) ACM certificate for a DNS name within your DNS zone, such as ``domovoi.example.com``
+
+After configuring these, set the ``alb_acm_cert_dns_name`` configuration key in the file ``.chalice/config.json`` to
+your DNS name. For example::
+
+  {
+    "app_name": "my_app",
+    ...
+    "alb_acm_cert_dns_name": "domovoi.example.com"
+  }
+
+Domovoi will automatically create, manage, and link the ALB and DNS record in your Route 53 zone.
 
 Dead Letter Queues
 ^^^^^^^^^^^^^^^^^^
