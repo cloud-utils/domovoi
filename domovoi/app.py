@@ -65,6 +65,7 @@ class Domovoi(Chalice):
     def alb_target(self, prefix=""):
         def register_alb_target(func):
             self.alb_targets[prefix] = dict(func=func, prefix=prefix)
+            return func
         return register_alb_target
 
     def scheduled_function(self, schedule, rule_name=None):
