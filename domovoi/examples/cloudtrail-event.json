@@ -1,0 +1,66 @@
+{
+  "Records": [
+    {
+      "eventVersion": "1.02",
+      "userIdentity": {
+        "type": "Root",
+        "principalId": "123456789012",
+        "arn": "arn:aws:iam::123456789012:root",
+        "accountId": "123456789012",
+        "accessKeyId": "access-key-id",
+        "sessionContext": {
+          "attributes": {
+            "mfaAuthenticated": "false",
+            "creationDate": "2015-01-24T22:41:54Z"
+          }
+        }
+      },
+      "eventTime": "2015-01-24T23:26:50Z",
+      "eventSource": "sns.amazonaws.com",
+      "eventName": "CreateTopic",
+      "awsRegion": "us-east-2",
+      "sourceIPAddress": "205.251.233.176",
+      "userAgent": "console.amazonaws.com",
+      "requestParameters": {
+        "name": "dropmeplease"
+      },
+      "responseElements": {
+        "topicArn": "arn:aws:sns:us-east-2:123456789012:exampletopic"
+      },
+      "requestID": "3fdb7834-9079-557e-8ef2-350abc03536b",
+      "eventID": "17b46459-dada-4278-b8e2-5a4ca9ff1a9c",
+      "eventType": "AwsApiCall",
+      "recipientAccountId": "123456789012"
+    },
+    {
+      "eventVersion": "1.02",
+      "userIdentity": {
+        "type": "Root",
+        "principalId": "123456789012",
+        "arn": "arn:aws:iam::123456789012:root",
+        "accountId": "123456789012",
+        "accessKeyId": "AKIAIOSFODNN7EXAMPLE",
+        "sessionContext": {
+          "attributes": {
+            "mfaAuthenticated": "false",
+            "creationDate": "2015-01-24T22:41:54Z"
+          }
+        }
+      },
+      "eventTime": "2015-01-24T23:27:02Z",
+      "eventSource": "sns.amazonaws.com",
+      "eventName": "GetTopicAttributes",
+      "awsRegion": "us-east-2",
+      "sourceIPAddress": "205.251.233.176",
+      "userAgent": "console.amazonaws.com",
+      "requestParameters": {
+        "topicArn": "arn:aws:sns:us-east-2:123456789012:exampletopic"
+      },
+      "responseElements": null,
+      "requestID": "4a0388f7-a0af-5df9-9587-c5c98c29cbec",
+      "eventID": "ec5bb073-8fa1-4d45-b03c-f07b9fc9ea18",
+      "eventType": "AwsApiCall",
+      "recipientAccountId": "123456789012"
+    }
+  ]
+}

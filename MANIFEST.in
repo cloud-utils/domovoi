@@ -1,3 +1,4 @@
 include *.rst
 include test/*
 include domovoi/*.json
+include domovoi/examples/*.json
