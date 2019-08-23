@@ -172,7 +172,7 @@ Domovoi will automatically create, manage, and link the ALB and DNS record in yo
 
 Dead Letter Queues
 ^^^^^^^^^^^^^^^^^^
-To enable your Lambda function to forward failed invocation notifications to `dead letter queuees
+To enable your Lambda function to forward failed invocation notifications to `dead letter queues
 <http://docs.aws.amazon.com/lambda/latest/dg/dlq.html>`_, set the configuration key ``dead_letter_queue_target_arn`` in
 the file ``.chalice/config.json`` to the target DLQ ARN. For example::
 
