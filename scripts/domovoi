@@ -173,7 +173,7 @@ deployer = create_default_deployer(session=botocore_session,
 function_name = '%s-%s' % (config.app_name, args.stage)
 
 if args.dry_run:
-    lambda_arn = "arn:aws:lambda:::"
+    deployed_values, lambda_arn = dict(resources=[]), "arn:aws:lambda:::"
 else:
     deployed_values = deployer.deploy(config, chalice_stage_name=args.stage)
     for resource in deployed_values["resources"]:
@@ -249,6 +249,10 @@ def update_alias_dns_record(source_dns_name, target_dns_name, hosted_zone_id):
         }
     }
     route53.change_resource_record_sets(HostedZoneId=zone["Id"], ChangeBatch=dict(Changes=[zone_update]))
+
+def register_deployed_resource(resource_type, **kwargs):
+    deployed_values["resources"].append(dict(kwargs, resource_type=resource_type))
+    deployer._recorder.record_results(deployed_values, args.stage, args.project_dir)
 
 
 if domovoi_app.alb_targets:
@@ -492,6 +496,7 @@ if state_machine and not args.dry_run:
             sfn.update_state_machine(stateMachineArn=sm["stateMachineArn"], **sm_args)
         else:
             print("No changes required to existing state machine", sm["stateMachineArn"])
+    register_deployed_resource("state_machine", name=function_name, arn=sm["stateMachineArn"])
     print("State machine:", sm["stateMachineArn"])
 
 if args.dry_run:
