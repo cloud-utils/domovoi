@@ -1,3 +1,12 @@
+Changes for v2.0.2 (2019-08-26)
+===============================
+
+-  Record step function ARN in deployed values. Fixes #22
+
+-  Return enclosed function in ALB decorator
+
+-  Minor documentation improvements
+
 Changes for v2.0.1 (2019-04-15)
 ===============================
 
