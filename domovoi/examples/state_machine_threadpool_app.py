@@ -57,8 +57,10 @@ sfn_thread = {
 
 num_threads = 64
 
+
 class DomovoiTimeout(Exception):
     pass
+
 
 @app.step_function_task(state_name="Scatter", state_machine_definition=sfn)
 def scatter(event, context):
@@ -69,6 +71,7 @@ def scatter(event, context):
     # or distribute work out-of-band through an SQS queue or similar.
     # Workers can introspect their state name (which contains the "thread ID") via context.invoked_function_arn.
     return event
+
 
 class Worker:
     def run(self, x):
@@ -81,6 +84,7 @@ class Worker:
                 # This represents some long-running task that may not be interruptible from within Python.
                 time.sleep(9000)
         return dict(x=self.x)
+
 
 def do_work(event, context):
     def alarm_handler(signum, frame):
@@ -111,6 +115,7 @@ for t in range(num_threads):
     thread = json.loads(json.dumps(sfn_thread).replace("{t}", str(t)))
     sfn["States"]["Threadpool"]["Branches"].append(thread)
     app.step_function_task(state_name="Worker{}".format(t), state_machine_definition=sfn)(do_work)
+
 
 @app.step_function_task(state_name="Finalizer", state_machine_definition=sfn)
 def finish_work(event, context):

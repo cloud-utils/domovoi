@@ -4,16 +4,20 @@ import json, gzip, base64, logging
 
 from chalice.app import Chalice, LambdaFunction
 
+
 class DomovoiException(Exception):
     pass
 
+
 class ARN:
     fields = "arn partition service region account_id resource".split()
+
     def __init__(self, arn="arn:aws::::", **kwargs):
         self.__dict__.update(dict(zip(self.fields, arn.split(":", 5)), **kwargs))
 
     def __str__(self):
         return ":".join(getattr(self, field) for field in self.fields)
+
 
 class StateMachine:
     def __init__(self, app, client=None):
@@ -38,6 +42,7 @@ class StateMachine:
         if name is not None:
             start_execution_args.update(name=name)
         return self.stepfunctions.start_execution(**start_execution_args)
+
 
 class Domovoi(Chalice):
     cloudwatch_events_rules = {}

@@ -54,8 +54,10 @@ sfn = {
     }
 }
 
+
 class DomovoiTimeout(Exception):
     pass
+
 
 class Worker:
     def run(self, x):
@@ -68,6 +70,7 @@ class Worker:
                 # This represents some long-running task that may not be interruptible from within Python.
                 time.sleep(9000)
         return dict(x=self.x, sleep_seconds=random.randrange(8))
+
 
 @app.step_function_task(state_name="Worker", state_machine_definition=sfn)
 def do_work(event, context):
@@ -92,6 +95,7 @@ def do_work(event, context):
 
     event.update(result, finished=True)
     return event
+
 
 @app.step_function_task(state_name="Finalizer", state_machine_definition=sfn)
 def finish_work(event, context):
