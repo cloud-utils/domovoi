@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import json, gzip, base64, logging
 
-from chalice.app import Chalice, LambdaFunction
+from chalice.app import Chalice, LambdaFunction, DecoratorAPI as ChaliceDecoratorAPI
 
 
 class DomovoiException(Exception):
@@ -56,9 +56,15 @@ class Domovoi(Chalice):
 
     sqs_default_queue_attributes = {"VisibilityTimeout": "320"}
 
+    def unsupported_decorator(*args, **kwargs):
+        raise NotImplementedError("Domovoi does not support this Chalice decorator")
+
     def __init__(self, app_name="Domovoi", configure_logs=True):
         Chalice.__init__(self, app_name=app_name, configure_logs=configure_logs)
         self.pure_lambda_functions = [LambdaFunction(self, name=app_name, handler_string="app.app")]
+        for f in dir(ChaliceDecoratorAPI):
+            if callable(getattr(ChaliceDecoratorAPI, f)) and not f.startswith("_"):
+                setattr(self, f, Domovoi.unsupported_decorator)
 
     def _configure_log_level(self):
         if self._debug:
